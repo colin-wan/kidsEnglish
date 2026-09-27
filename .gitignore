@@ -4,3 +4,4 @@ __pycache__/
 *.aiff
 *.ogg
 test_*
+server.log

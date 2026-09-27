@@ -121,9 +121,9 @@ var ParticleSystem = (function() {
     for (var i = bubbles.length - 1; i >= 0; i--) {
       var b = bubbles[i];
       var dist = Math.sqrt((x - b.x) * (x - b.x) + (y - b.y) * (y - b.y));
-      if (dist <= b.radius + 18) { // generous toddler hit area
+      if (dist <= b.radius + 30) { // extra generous hit area for toddler fingers
         var hitBubble = bubbles.splice(i, 1)[0];
-        burst(hitBubble.x, hitBubble.y, 18);
+        burst(hitBubble.x, hitBubble.y, 20);
         return hitBubble;
       }
     }

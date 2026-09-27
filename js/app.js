@@ -54,21 +54,45 @@ var App = (function() {
   function attachTouchOrClick(element, handler) {
     if (!element) return;
     var lastTrigger = 0;
-    var onTrigger = function(e) {
+    var startX = 0;
+    var startY = 0;
+    var moved = false;
+
+    element.addEventListener('touchstart', function(e) {
+      if (e.touches && e.touches[0]) {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        moved = false;
+      }
+    }, false);
+
+    element.addEventListener('touchmove', function(e) {
+      if (e.touches && e.touches[0]) {
+        var dx = Math.abs(e.touches[0].clientX - startX);
+        var dy = Math.abs(e.touches[0].clientY - startY);
+        if (dx > 12 || dy > 12) {
+          moved = true;
+        }
+      }
+    }, false);
+
+    element.addEventListener('touchend', function(e) {
+      if (moved) return;
+      if (e.cancelable) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
       var now = Date.now();
-      if (now - lastTrigger < 220) return;
+      if (now - lastTrigger < 250) return;
       lastTrigger = now;
       handler(e);
-    };
-
-    element.addEventListener('click', onTrigger, false);
-    element.addEventListener('touchend', function(e) {
-      if (e.cancelable) e.preventDefault();
-      onTrigger(e);
     }, false);
-    element.addEventListener('pointerup', onTrigger, false);
-    // Direct DOM property fallback for legacy Safari WebKit
-    element.onclick = onTrigger;
+
+    element.addEventListener('click', function(e) {
+      if (e.stopPropagation) e.stopPropagation();
+      var now = Date.now();
+      if (now - lastTrigger < 250) return;
+      lastTrigger = now;
+      handler(e);
+    }, false);
   }
 
   // Reliable detection of UI interactive controls (buttons, pills, nav, scenery)
@@ -104,14 +128,12 @@ var App = (function() {
     // Splash screen click dismissal
     var startBtn = document.getElementById('start-btn');
     if (startBtn) {
-      attachTouchOrClick(startBtn, function(e) {
-        if (e && e.stopPropagation) e.stopPropagation();
+      attachTouchOrClick(startBtn, function() {
         startApp();
       });
     }
     if (splashOverlayEl) {
-      attachTouchOrClick(splashOverlayEl, function(e) {
-        if (e && e.stopPropagation) e.stopPropagation();
+      attachTouchOrClick(splashOverlayEl, function() {
         startApp();
       });
     }
@@ -120,59 +142,28 @@ var App = (function() {
     var themePills = document.querySelectorAll('.theme-pill');
     for (var t = 0; t < themePills.length; t++) {
       (function(pill) {
-        attachTouchOrClick(pill, function(e) {
-          if (e && e.stopPropagation) e.stopPropagation();
+        attachTouchOrClick(pill, function() {
           var theme = pill.getAttribute('data-theme');
           setTheme(theme);
         });
       })(themePills[t]);
     }
 
-    // Mode Buttons (Explicit handlers & direct property fallbacks)
+    // Mode Buttons
     if (modeExploreBtn) {
-      attachTouchOrClick(modeExploreBtn, function(e) {
-        if (e && e.stopPropagation) e.stopPropagation();
+      attachTouchOrClick(modeExploreBtn, function() {
         setMode('explore');
       });
-      modeExploreBtn.onclick = function(e) {
-        if (e && e.stopPropagation) e.stopPropagation();
-        setMode('explore');
-      };
-      modeExploreBtn.ontouchend = function(e) {
-        if (e && e.cancelable) e.preventDefault();
-        if (e && e.stopPropagation) e.stopPropagation();
-        setMode('explore');
-      };
     }
     if (modeFindBtn) {
-      attachTouchOrClick(modeFindBtn, function(e) {
-        if (e && e.stopPropagation) e.stopPropagation();
+      attachTouchOrClick(modeFindBtn, function() {
         setMode('find');
       });
-      modeFindBtn.onclick = function(e) {
-        if (e && e.stopPropagation) e.stopPropagation();
-        setMode('find');
-      };
-      modeFindBtn.ontouchend = function(e) {
-        if (e && e.cancelable) e.preventDefault();
-        if (e && e.stopPropagation) e.stopPropagation();
-        setMode('find');
-      };
     }
     if (modeBubblesBtn) {
-      attachTouchOrClick(modeBubblesBtn, function(e) {
-        if (e && e.stopPropagation) e.stopPropagation();
+      attachTouchOrClick(modeBubblesBtn, function() {
         setMode('bubbles');
       });
-      modeBubblesBtn.onclick = function(e) {
-        if (e && e.stopPropagation) e.stopPropagation();
-        setMode('bubbles');
-      };
-      modeBubblesBtn.ontouchend = function(e) {
-        if (e && e.cancelable) e.preventDefault();
-        if (e && e.stopPropagation) e.stopPropagation();
-        setMode('bubbles');
-      };
     }
 
     // Scenery: Sun, Clouds, Singing Flowers
@@ -201,15 +192,13 @@ var App = (function() {
       });
     }
 
-    // Bubble Tap Listeners (Strictly ignores buttons, mode tabs, theme pills & scenery)
-    var onBubbleInteraction = function(e) {
-      if (currentMode !== 'bubbles') return;
-      if (isUiControlTap(e.target)) return;
+    // ==========================================
+    // BUBBLE POPPING (ZERO-LATENCY TOUCH & CLICK)
+    // ==========================================
+    var lastBubblePopTime = 0;
 
-      var clientX = e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX;
-      var clientY = e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY;
-      if (clientX === undefined || clientY === undefined) return;
-
+    function popBubbleAt(clientX, clientY) {
+      if (typeof clientX !== 'number' || typeof clientY !== 'number') return false;
       var hitBubble = ParticleSystem.checkBubbleTap(clientX, clientY);
       if (hitBubble) {
         try {
@@ -226,31 +215,57 @@ var App = (function() {
             AudioEngine.playClip(hitBubble.key);
           } catch (errClip) {}
         }
-        // Spawn immediate replacement bubble
         spawnNextBubble();
+        return true;
       } else {
-        // Playful little splash sparkle on empty tap
         try {
-          ParticleSystem.burst(clientX, clientY, 6);
+          ParticleSystem.burst(clientX, clientY, 8);
         } catch (errBurst) {}
+        return false;
       }
-    };
-
-    var handleBubblesModeTap = function(e) {
-      if (currentMode !== 'bubbles') return;
-      if (isUiControlTap(e.target)) return;
-      onBubbleInteraction(e);
-    };
+    }
 
     var appContainer = document.getElementById('app-container');
     if (appContainer) {
-      appContainer.addEventListener('click', handleBubblesModeTap, false);
-      appContainer.addEventListener('touchend', function(e) {
-        if (currentMode === 'bubbles') {
-          if (isUiControlTap(e.target)) return; // DO NOT preventDefault or intercept button touches!
-          if (e.cancelable) e.preventDefault();
-          onBubbleInteraction(e);
+      // Instant Touchstart for iPad (zero delay on finger touch!)
+      appContainer.addEventListener('touchstart', function(e) {
+        if (currentMode !== 'bubbles') return;
+        if (isUiControlTap(e.target)) return; // Allow button touches to work cleanly!
+
+        var touches = e.changedTouches || e.touches;
+        if (!touches || touches.length === 0) return;
+
+        lastBubblePopTime = Date.now();
+        for (var i = 0; i < touches.length; i++) {
+          popBubbleAt(touches[i].clientX, touches[i].clientY);
         }
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+      }, false);
+
+      // Touchend fallback in case touchstart was missed
+      appContainer.addEventListener('touchend', function(e) {
+        if (currentMode !== 'bubbles') return;
+        if (isUiControlTap(e.target)) return;
+        if (Date.now() - lastBubblePopTime < 350) return; // Already popped on touchstart!
+
+        var touches = e.changedTouches || e.touches;
+        if (!touches || touches.length === 0) return;
+        for (var i = 0; i < touches.length; i++) {
+          popBubbleAt(touches[i].clientX, touches[i].clientY);
+        }
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+      }, false);
+
+      // Click event for Mac desktop mouse clicks
+      appContainer.addEventListener('click', function(e) {
+        if (currentMode !== 'bubbles') return;
+        if (isUiControlTap(e.target)) return;
+        if (Date.now() - lastBubblePopTime < 400) return; // Prevent double trigger from simulated clicks
+        popBubbleAt(e.clientX, e.clientY);
       }, false);
     }
   }
@@ -795,20 +810,9 @@ var App = (function() {
 
     var backBtn = document.getElementById('bubbles-back-btn');
     if (backBtn) {
-      attachTouchOrClick(backBtn, function(e) {
-        if (e && e.stopPropagation) e.stopPropagation();
+      attachTouchOrClick(backBtn, function() {
         setMode('explore');
       });
-      // Direct DOM property fallbacks for 100% guarantee on iOS 12 Safari
-      backBtn.onclick = function(e) {
-        if (e && e.stopPropagation) e.stopPropagation();
-        setMode('explore');
-      };
-      backBtn.ontouchend = function(e) {
-        if (e && e.cancelable) e.preventDefault();
-        if (e && e.stopPropagation) e.stopPropagation();
-        setMode('explore');
-      };
     }
 
     showPrompt("Pop the bubbles! Pop pop pop!", "🫧");
