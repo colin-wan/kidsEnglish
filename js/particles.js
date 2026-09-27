@@ -88,13 +88,14 @@ var ParticleSystem = (function() {
   }
 
   // Spawn floating bubble (for Bubble Pop Game mode or ambient play)
-  function spawnBubble(data) {
-    var radius = 42 + Math.random() * 12;
+  function spawnBubble(data, startY) {
+    var radius = 46 + Math.random() * 14;
     var startX = radius + Math.random() * (width - radius * 2);
+    var initialY = (typeof startY === 'number') ? startY : (height + radius + 10);
     bubbles.push({
       id: Math.random().toString(36).substr(2, 9),
       x: startX,
-      y: height + radius + 10,
+      y: initialY,
       radius: radius,
       speedY: 1.2 + Math.random() * 1.4,
       wobbleOffset: Math.random() * 10,
@@ -111,14 +112,18 @@ var ParticleSystem = (function() {
     bubbles = [];
   }
 
+  function getBubbleCount() {
+    return bubbles.length;
+  }
+
   // Check if tap hit any bubble
   function checkBubbleTap(x, y) {
     for (var i = bubbles.length - 1; i >= 0; i--) {
       var b = bubbles[i];
       var dist = Math.sqrt((x - b.x) * (x - b.x) + (y - b.y) * (y - b.y));
-      if (dist <= b.radius + 15) { // generous toddler hit area
+      if (dist <= b.radius + 18) { // generous toddler hit area
         var hitBubble = bubbles.splice(i, 1)[0];
-        burst(hitBubble.x, hitBubble.y, 16);
+        burst(hitBubble.x, hitBubble.y, 18);
         return hitBubble;
       }
     }
@@ -176,18 +181,23 @@ var ParticleSystem = (function() {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
       ctx.fill();
 
-      // Bubble content: Letter or Emoji
-      if (b.letter) {
+      // Bubble content: Emoji and/or Letter (Optimized for toddler recognition)
+      if (b.emoji) {
+        ctx.font = Math.round(b.radius * 1.05) + 'px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(b.emoji, 0, 2);
+        if (b.letter) {
+          ctx.fillStyle = '#E65100';
+          ctx.font = 'bold ' + Math.round(b.radius * 0.38) + 'px -apple-system, sans-serif';
+          ctx.fillText(b.letter, b.radius * 0.45, -b.radius * 0.42);
+        }
+      } else if (b.letter) {
         ctx.fillStyle = '#E91E63';
         ctx.font = 'bold ' + Math.round(b.radius * 0.9) + 'px -apple-system, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(b.letter, 0, 0);
-      } else if (b.emoji) {
-        ctx.font = Math.round(b.radius * 1.1) + 'px -apple-system, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(b.emoji, 0, 2);
       }
 
       ctx.restore();
@@ -234,6 +244,7 @@ var ParticleSystem = (function() {
     burst: burst,
     spawnBubble: spawnBubble,
     checkBubbleTap: checkBubbleTap,
-    clearBubbles: clearBubbles
+    clearBubbles: clearBubbles,
+    getBubbleCount: getBubbleCount
   };
 })();

@@ -138,40 +138,52 @@ var App = (function() {
       });
     }
 
-    // Bubble Taps
-    var containerEl = document.getElementById('app-container');
-    if (containerEl) {
-      var handleContainerTap = function(e) {
-        if (currentMode !== 'bubbles') return;
-        var clientX = e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX;
-        var clientY = e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY;
-        if (clientX === undefined || clientY === undefined) return;
+    // Bubble Tap Listeners (Zero-delay, works on both iPad Safari touch and Mac click)
+    var onBubbleInteraction = function(e) {
+      if (currentMode !== 'bubbles') return;
+      var clientX = e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX;
+      var clientY = e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY;
+      if (clientX === undefined || clientY === undefined) return;
 
-        var hitBubble = ParticleSystem.checkBubbleTap(clientX, clientY);
-        if (hitBubble) {
-          AudioEngine.playPop();
-          AudioEngine.playChime(659.25);
-          addStar(1);
+      var hitBubble = ParticleSystem.checkBubbleTap(clientX, clientY);
+      if (hitBubble) {
+        AudioEngine.playPop();
+        AudioEngine.playChime(783.99);
+        addStar(1);
+        bubblePopCount++;
+        var countEl = document.getElementById('bubble-pop-count');
+        if (countEl) countEl.innerText = bubblePopCount;
 
-          if (hitBubble.key) {
-            AudioEngine.playClip(hitBubble.key);
-          }
+        if (hitBubble.key) {
+          AudioEngine.playClip(hitBubble.key);
         }
-      };
+        // Spawn immediate replacement bubble
+        spawnNextBubble();
+      } else {
+        // Playful little splash sparkle on empty tap
+        ParticleSystem.burst(clientX, clientY, 6);
+      }
+    };
 
-      containerEl.addEventListener('click', handleContainerTap, false);
-      containerEl.addEventListener('touchend', handleContainerTap, false);
+    var canvasEl = document.getElementById('particles-canvas');
+    if (canvasEl) {
+      canvasEl.addEventListener('click', onBubbleInteraction, false);
+      canvasEl.addEventListener('touchend', function(e) {
+        if (currentMode === 'bubbles' && e.cancelable) e.preventDefault();
+        onBubbleInteraction(e);
+      }, false);
+    }
+    if (playgroundEl) {
+      playgroundEl.addEventListener('click', function(e) {
+        if (currentMode === 'bubbles') onBubbleInteraction(e);
+      }, false);
     }
   }
 
   // ==========================================
   // THEME SWITCHING & RENDERING
   // ==========================================
-  function setTheme(theme) {
-    currentTheme = theme;
-    targetItem = null;
-
-    // Update active theme pills
+  function updateThemePills(theme) {
     var pills = document.querySelectorAll('.theme-pill');
     for (var i = 0; i < pills.length; i++) {
       if (pills[i].getAttribute('data-theme') === theme) {
@@ -180,14 +192,34 @@ var App = (function() {
         pills[i].className = 'theme-pill';
       }
     }
+  }
 
+  function setTheme(theme) {
+    currentTheme = theme;
+    targetItem = null;
+    updateThemePills(theme);
     AudioEngine.playChime(783.99);
-    renderCurrentTheme();
+
+    if (theme === 'feed' || theme === 'songs') {
+      currentMode = 'explore';
+      if (modeExploreBtn) modeExploreBtn.className = 'mode-btn active';
+      if (modeFindBtn) modeFindBtn.className = 'mode-btn';
+      if (modeBubblesBtn) modeBubblesBtn.className = 'mode-btn';
+      var canvasEl = document.getElementById('particles-canvas');
+      if (canvasEl) canvasEl.style.pointerEvents = 'none';
+      clearInterval(bubbleSpawnTimer);
+      bubbleSpawnTimer = null;
+      ParticleSystem.clearBubbles();
+      renderCurrentTheme();
+      return;
+    }
 
     if (currentMode === 'find') {
-      pickNextTarget();
+      renderFindStage();
     } else if (currentMode === 'bubbles') {
-      startBubbleSpawner();
+      renderBubblesStage();
+    } else {
+      renderCurrentTheme();
     }
   }
 
@@ -468,40 +500,6 @@ var App = (function() {
     addStar(1);
   }
 
-  function handleFindModeTap(item, pod, cx, cy) {
-    if (!targetItem) return;
-
-    if (item.id === targetItem.id) {
-      AudioEngine.playFanfare();
-      ParticleSystem.burst(cx, cy, 24);
-      addStar(3);
-
-      if (pod) {
-        pod.classList.remove('anim-jump');
-        void pod.offsetWidth;
-        pod.classList.add('anim-jump');
-      }
-
-      showSpeech(item.id, "You found me! ⭐⭐⭐");
-
-      var praises = ['praise_great', 'praise_yay', 'praise_super', 'praise_highfive'];
-      var praiseClip = praises[Math.floor(Math.random() * praises.length)];
-      setTimeout(function() {
-        AudioEngine.playClip(praiseClip, function() {
-          setTimeout(pickNextTarget, 600);
-        });
-      }, 300);
-    } else {
-      AudioEngine.playBoing();
-      showSpeech(item.id, "I am " + item.name + "!");
-      if (item.phraseKey) {
-        AudioEngine.playClip(item.phraseKey, function() {
-          setTimeout(repeatPrompt, 400);
-        });
-      }
-    }
-  }
-
   function getCurrentThemeItems() {
     if (currentTheme === 'animals') return ContentData.animals;
     if (currentTheme === 'fruits') return ContentData.fruits;
@@ -510,20 +508,120 @@ var App = (function() {
     return ContentData.animals;
   }
 
-  function pickNextTarget() {
-    if (currentMode !== 'find') return;
-    var list = getCurrentThemeItems();
-    if (!list || list.length === 0) return;
+  // ==========================================
+  // DEDICATED FIND GAME STAGE
+  // ==========================================
+  var isFindTransitioning = false;
 
+  function renderFindStage() {
+    if (!playgroundEl) return;
+    playgroundEl.innerHTML = '';
+
+    var items = getCurrentThemeItems();
+    if (!items || items.length === 0) return;
+
+    // Pick target (avoid repeating immediate same item)
     var next;
     do {
-      next = list[Math.floor(Math.random() * list.length)];
-    } while (list.length > 1 && targetItem && next.id === targetItem.id);
-
+      next = items[Math.floor(Math.random() * items.length)];
+    } while (items.length > 1 && targetItem && next.id === targetItem.id);
     targetItem = next;
+
+    // Pick 3 distractors from the current theme
+    var pool = [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].id !== targetItem.id) {
+        pool.push(items[i]);
+      }
+    }
+    // Shuffle pool
+    for (var j = pool.length - 1; j > 0; j--) {
+      var k = Math.floor(Math.random() * (j + 1));
+      var tmp = pool[j];
+      pool[j] = pool[k];
+      pool[k] = tmp;
+    }
+    var options = [targetItem];
+    for (var p = 0; p < Math.min(3, pool.length); p++) {
+      options.push(pool[p]);
+    }
+    // Shuffle options array
+    for (var s = options.length - 1; s > 0; s--) {
+      var r = Math.floor(Math.random() * (s + 1));
+      var t = options[s];
+      options[s] = options[r];
+      options[r] = t;
+    }
+
+    var stage = document.createElement('div');
+    stage.className = 'find-stage';
+
+    var questionBox = document.createElement('div');
+    questionBox.className = 'find-question-box';
+    questionBox.innerHTML = (
+      '<div class="find-question-text">' +
+        '<span>Can you find the <strong>' + targetItem.name + '</strong>?</span>' +
+        '<span class="find-question-emoji">' + (targetItem.bubbleEmoji || '⭐') + '</span>' +
+      '</div>' +
+      '<button class="find-replay-btn" id="find-replay-btn">' +
+        '<span>🔊 Listen</span>' +
+      '</button>'
+    );
+    stage.appendChild(questionBox);
+
+    var grid = document.createElement('div');
+    grid.className = 'find-options-grid';
+
+    for (var o = 0; o < options.length; o++) {
+      var opt = options[o];
+      var card = document.createElement('div');
+      card.className = 'find-option-card';
+      card.id = 'find-card-' + opt.id;
+      card.setAttribute('data-id', opt.id);
+
+      if (currentTheme === 'colors') {
+        card.innerHTML = (
+          '<div class="color-splash-box" style="background-color:' + opt.hex + '">' + opt.bubbleEmoji + '</div>' +
+          '<div class="animal-name-tag" style="color:' + opt.hex + '">' + opt.name + '</div>'
+        );
+      } else {
+        card.innerHTML = (
+          '<div class="letter-badge" style="background-color:' + (opt.color || '#FF5722') + '">' + opt.letter + '</div>' +
+          '<div class="animal-svg-box">' + opt.svg + '</div>' +
+          '<div class="animal-name-tag">' + opt.name + '</div>'
+        );
+      }
+
+      attachTouchOrClick(card, (function(optItem, cardEl) {
+        return function(e) {
+          handleFindOptionTap(optItem, cardEl, e);
+        };
+      })(opt, card));
+
+      grid.appendChild(card);
+    }
+
+    stage.appendChild(grid);
+    playgroundEl.appendChild(stage);
+
+    var replayBtn = document.getElementById('find-replay-btn');
+    if (replayBtn) {
+      attachTouchOrClick(replayBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        playTargetPrompt();
+      });
+    }
+
     showPrompt("Can you find the " + targetItem.name + "?", targetItem.bubbleEmoji);
 
-    // Play prompt clip if exists, otherwise announce word
+    // Audio hint after short delay
+    setTimeout(function() {
+      playTargetPrompt();
+    }, 280);
+  }
+
+  function playTargetPrompt() {
+    if (!targetItem) return;
     if (targetItem.promptKey) {
       AudioEngine.playClip(targetItem.promptKey);
     } else if (targetItem.phraseKey) {
@@ -531,13 +629,154 @@ var App = (function() {
     }
   }
 
-  function repeatPrompt() {
-    if (currentMode === 'find' && targetItem) {
-      if (targetItem.promptKey) {
-        AudioEngine.playClip(targetItem.promptKey);
-      } else if (targetItem.phraseKey) {
-        AudioEngine.playClip(targetItem.phraseKey);
+  function handleFindOptionTap(item, cardEl, e) {
+    if (isFindTransitioning || !targetItem) return;
+
+    var rect = cardEl.getBoundingClientRect();
+    var cx = rect.left + rect.width / 2;
+    var cy = rect.top + rect.height / 2;
+
+    if (item.id === targetItem.id) {
+      // SUCCESS: Toddler found the item!
+      isFindTransitioning = true;
+      cardEl.classList.add('correct-celebrate');
+      ParticleSystem.burst(cx, cy, 26);
+      AudioEngine.playFanfare();
+      addStar(3);
+
+      var praises = ['praise_great', 'praise_yay', 'praise_super', 'praise_highfive'];
+      var praiseClip = praises[Math.floor(Math.random() * praises.length)];
+
+      setTimeout(function() {
+        AudioEngine.playClip(praiseClip, function() {
+          setTimeout(function() {
+            isFindTransitioning = false;
+            renderFindStage(); // Advance to next fun question
+          }, 600);
+        });
+      }, 350);
+    } else {
+      // Friendly, non-punitive guidance
+      cardEl.classList.remove('wrong-wobble');
+      void cardEl.offsetWidth;
+      cardEl.classList.add('wrong-wobble');
+      ParticleSystem.burst(cx, cy, 10);
+      AudioEngine.playBoing();
+
+      if (item.phraseKey) {
+        AudioEngine.playClip(item.phraseKey, function() {
+          setTimeout(playTargetPrompt, 500);
+        });
+      } else {
+        setTimeout(playTargetPrompt, 500);
       }
+    }
+  }
+
+  // ==========================================
+  // DEDICATED BUBBLES POP STAGE
+  // ==========================================
+  var bubblePopCount = 0;
+
+  function renderBubblesStage() {
+    if (!playgroundEl) return;
+    playgroundEl.innerHTML = '';
+
+    clearInterval(bubbleSpawnTimer);
+    bubbleSpawnTimer = null;
+    ParticleSystem.clearBubbles();
+
+    var stage = document.createElement('div');
+    stage.className = 'bubbles-stage';
+    stage.innerHTML = (
+      '<div class="bubbles-info-bar">' +
+        '<span class="bubbles-info-title">🫧 Pop the Bubbles!</span>' +
+        '<span class="bubbles-pop-counter-pill">⭐ <span id="bubble-pop-count">' + bubblePopCount + '</span> Popped</span>' +
+      '</div>' +
+      '<div class="bubbles-sky-tap-hint">Tap floating bubbles to hear words! 🫧</div>'
+    );
+    playgroundEl.appendChild(stage);
+
+    showPrompt("Pop the bubbles! Pop pop pop!", "🫧");
+
+    // Enable direct touch on canvas
+    var canvasEl = document.getElementById('particles-canvas');
+    if (canvasEl) {
+      canvasEl.style.pointerEvents = 'auto';
+    }
+
+    // Spawn 4 immediate bubbles at varying heights
+    var viewHeight = window.innerHeight || 600;
+    spawnNextBubble(viewHeight * 0.75);
+    spawnNextBubble(viewHeight * 0.50);
+    spawnNextBubble(viewHeight * 0.30);
+    spawnNextBubble(viewHeight * 0.15);
+
+    bubbleSpawnTimer = setInterval(function() {
+      if (currentMode === 'bubbles') {
+        spawnNextBubble();
+      }
+    }, 1100);
+  }
+
+  function spawnNextBubble(startY) {
+    if (currentMode !== 'bubbles') return;
+    var list = getCurrentThemeItems();
+    if (!list || list.length === 0) return;
+    var randomObj = list[Math.floor(Math.random() * list.length)];
+
+    ParticleSystem.spawnBubble({
+      letter: randomObj.letter || '',
+      emoji: randomObj.bubbleEmoji || '⭐',
+      word: randomObj.name || '',
+      key: randomObj.phraseKey || ''
+    }, startY);
+  }
+
+  // ==========================================
+  // MODE SWITCHING (Explore, Find, Bubbles)
+  // ==========================================
+  function setMode(mode) {
+    currentMode = mode;
+    clearInterval(bubbleSpawnTimer);
+    bubbleSpawnTimer = null;
+    isFindTransitioning = false;
+
+    var canvasEl = document.getElementById('particles-canvas');
+
+    if (modeExploreBtn) modeExploreBtn.className = 'mode-btn' + (mode === 'explore' ? ' active' : '');
+    if (modeFindBtn) modeFindBtn.className = 'mode-btn' + (mode === 'find' ? ' active' : '');
+    if (modeBubblesBtn) modeBubblesBtn.className = 'mode-btn' + (mode === 'bubbles' ? ' active' : '');
+
+    if (mode === 'explore') {
+      if (canvasEl) canvasEl.style.pointerEvents = 'none';
+      ParticleSystem.clearBubbles();
+      AudioEngine.playClip('mode_explore');
+      renderCurrentTheme();
+    } else if (mode === 'find') {
+      if (canvasEl) canvasEl.style.pointerEvents = 'none';
+      ParticleSystem.clearBubbles();
+      if (currentTheme === 'feed' || currentTheme === 'songs') {
+        currentTheme = 'animals';
+        updateThemePills('animals');
+      }
+      AudioEngine.playClip('mode_find');
+      renderFindStage();
+    } else if (mode === 'bubbles') {
+      if (currentTheme === 'feed' || currentTheme === 'songs') {
+        currentTheme = 'animals';
+        updateThemePills('animals');
+      }
+      AudioEngine.playClip('mode_bubbles');
+      renderBubblesStage();
+    }
+  }
+
+  function repeatPrompt() {
+    if (currentMode === 'find') {
+      playTargetPrompt();
+    } else if (currentTheme === 'feed' && currentFeedingAnimal && currentFeedingAnimal.askClip) {
+      AudioEngine.playClip(currentFeedingAnimal.askClip);
     }
   }
 
@@ -557,49 +796,6 @@ var App = (function() {
     speechTimeout = setTimeout(function() {
       bubble.style.display = 'none';
     }, 2800);
-  }
-
-  function setMode(mode) {
-    currentMode = mode;
-    clearInterval(bubbleSpawnTimer);
-    bubbleSpawnTimer = null;
-    ParticleSystem.clearBubbles();
-
-    if (modeExploreBtn) modeExploreBtn.className = 'mode-btn' + (mode === 'explore' ? ' active' : '');
-    if (modeFindBtn) modeFindBtn.className = 'mode-btn' + (mode === 'find' ? ' active' : '');
-    if (modeBubblesBtn) modeBubblesBtn.className = 'mode-btn' + (mode === 'bubbles' ? ' active' : '');
-
-    if (mode === 'explore') {
-      AudioEngine.playClip('mode_explore');
-      showPrompt("Tap any item to explore!", "🌟");
-    } else if (mode === 'find') {
-      AudioEngine.playClip('mode_find', function() {
-        pickNextTarget();
-      });
-      showPrompt("Listen and find it!", "❓");
-    } else if (mode === 'bubbles') {
-      AudioEngine.playClip('mode_bubbles');
-      showPrompt("Pop the bubbles! Pop pop pop!", "🫧");
-      startBubbleSpawner();
-    }
-  }
-
-  function startBubbleSpawner() {
-    spawnNextBubble();
-    bubbleSpawnTimer = setInterval(spawnNextBubble, 1400);
-  }
-
-  function spawnNextBubble() {
-    if (currentMode !== 'bubbles') return;
-    var list = getCurrentThemeItems();
-    var randomObj = list[Math.floor(Math.random() * list.length)];
-
-    ParticleSystem.spawnBubble({
-      letter: randomObj.letter || '',
-      emoji: randomObj.bubbleEmoji || '⭐',
-      word: randomObj.name || '',
-      key: randomObj.phraseKey || ''
-    });
   }
 
   function addStar(count) {
