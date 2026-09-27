@@ -56,17 +56,48 @@ var App = (function() {
     var lastTrigger = 0;
     var onTrigger = function(e) {
       var now = Date.now();
-      if (now - lastTrigger < 250) return;
+      if (now - lastTrigger < 220) return;
       lastTrigger = now;
       handler(e);
     };
 
     element.addEventListener('click', onTrigger, false);
-    element.addEventListener('pointerup', onTrigger, false);
     element.addEventListener('touchend', function(e) {
       if (e.cancelable) e.preventDefault();
       onTrigger(e);
     }, false);
+    element.addEventListener('pointerup', onTrigger, false);
+    // Direct DOM property fallback for legacy Safari WebKit
+    element.onclick = onTrigger;
+  }
+
+  // Reliable detection of UI interactive controls (buttons, pills, nav, scenery)
+  function isUiControlTap(target) {
+    if (!target) return false;
+    var el = target.nodeType === 3 ? target.parentNode : target;
+    if (!el) return false;
+    if (typeof el.closest === 'function') {
+      return !!el.closest('button, .mode-btn, .theme-pill, .bubbles-back-btn, .bubbles-info-bar, .top-bar, .theme-nav-bar, .bottom-nature-bar, .flower-touchable, .sun-item, .cloud-item, #start-btn, .splash-overlay, .find-replay-btn');
+    }
+    // Fallback for older DOM implementations without element.closest
+    while (el && el !== document.body && el !== document.documentElement) {
+      var tag = (el.tagName || '').toLowerCase();
+      var cls = el.className || '';
+      if (tag === 'button' || tag === 'header' || tag === 'nav' || tag === 'footer') return true;
+      if (typeof cls === 'string' && (
+        cls.indexOf('mode-btn') !== -1 ||
+        cls.indexOf('theme-pill') !== -1 ||
+        cls.indexOf('bubbles-back-btn') !== -1 ||
+        cls.indexOf('bubbles-info-bar') !== -1 ||
+        cls.indexOf('top-bar') !== -1 ||
+        cls.indexOf('theme-nav-bar') !== -1 ||
+        cls.indexOf('flower-touchable') !== -1 ||
+        cls.indexOf('sun-item') !== -1 ||
+        cls.indexOf('cloud-item') !== -1
+      )) return true;
+      el = el.parentNode;
+    }
+    return false;
   }
 
   function bindEvents() {
@@ -79,7 +110,8 @@ var App = (function() {
       });
     }
     if (splashOverlayEl) {
-      attachTouchOrClick(splashOverlayEl, function() {
+      attachTouchOrClick(splashOverlayEl, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
         startApp();
       });
     }
@@ -88,28 +120,59 @@ var App = (function() {
     var themePills = document.querySelectorAll('.theme-pill');
     for (var t = 0; t < themePills.length; t++) {
       (function(pill) {
-        attachTouchOrClick(pill, function() {
+        attachTouchOrClick(pill, function(e) {
+          if (e && e.stopPropagation) e.stopPropagation();
           var theme = pill.getAttribute('data-theme');
           setTheme(theme);
         });
       })(themePills[t]);
     }
 
-    // Mode Buttons
+    // Mode Buttons (Explicit handlers & direct property fallbacks)
     if (modeExploreBtn) {
-      attachTouchOrClick(modeExploreBtn, function() {
+      attachTouchOrClick(modeExploreBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
         setMode('explore');
       });
+      modeExploreBtn.onclick = function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        setMode('explore');
+      };
+      modeExploreBtn.ontouchend = function(e) {
+        if (e && e.cancelable) e.preventDefault();
+        if (e && e.stopPropagation) e.stopPropagation();
+        setMode('explore');
+      };
     }
     if (modeFindBtn) {
-      attachTouchOrClick(modeFindBtn, function() {
+      attachTouchOrClick(modeFindBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
         setMode('find');
       });
+      modeFindBtn.onclick = function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        setMode('find');
+      };
+      modeFindBtn.ontouchend = function(e) {
+        if (e && e.cancelable) e.preventDefault();
+        if (e && e.stopPropagation) e.stopPropagation();
+        setMode('find');
+      };
     }
     if (modeBubblesBtn) {
-      attachTouchOrClick(modeBubblesBtn, function() {
+      attachTouchOrClick(modeBubblesBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
         setMode('bubbles');
       });
+      modeBubblesBtn.onclick = function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        setMode('bubbles');
+      };
+      modeBubblesBtn.ontouchend = function(e) {
+        if (e && e.cancelable) e.preventDefault();
+        if (e && e.stopPropagation) e.stopPropagation();
+        setMode('bubbles');
+      };
     }
 
     // Scenery: Sun, Clouds, Singing Flowers
@@ -138,43 +201,44 @@ var App = (function() {
       });
     }
 
-    // Bubble Tap Listeners (Zero-delay, works on both iPad Safari touch and Mac click)
+    // Bubble Tap Listeners (Strictly ignores buttons, mode tabs, theme pills & scenery)
     var onBubbleInteraction = function(e) {
       if (currentMode !== 'bubbles') return;
+      if (isUiControlTap(e.target)) return;
+
       var clientX = e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX;
       var clientY = e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY;
       if (clientX === undefined || clientY === undefined) return;
 
       var hitBubble = ParticleSystem.checkBubbleTap(clientX, clientY);
       if (hitBubble) {
-        AudioEngine.playPop();
-        AudioEngine.playChime(783.99);
+        try {
+          AudioEngine.playPop();
+          AudioEngine.playChime(783.99);
+        } catch (errPop) {}
         addStar(1);
         bubblePopCount++;
         var countEl = document.getElementById('bubble-pop-count');
         if (countEl) countEl.innerText = bubblePopCount;
 
         if (hitBubble.key) {
-          AudioEngine.playClip(hitBubble.key);
+          try {
+            AudioEngine.playClip(hitBubble.key);
+          } catch (errClip) {}
         }
         // Spawn immediate replacement bubble
         spawnNextBubble();
       } else {
         // Playful little splash sparkle on empty tap
-        ParticleSystem.burst(clientX, clientY, 6);
+        try {
+          ParticleSystem.burst(clientX, clientY, 6);
+        } catch (errBurst) {}
       }
     };
 
     var handleBubblesModeTap = function(e) {
       if (currentMode !== 'bubbles') return;
-      var target = e.target;
-      var isBtn = target && (
-        target.tagName === 'BUTTON' || 
-        (target.closest && target.closest('button')) || 
-        (target.classList && target.classList.contains('theme-pill')) || 
-        (target.closest && target.closest('.theme-pill'))
-      );
-      if (isBtn) return; // Allow buttons and theme pills to click freely!
+      if (isUiControlTap(e.target)) return;
       onBubbleInteraction(e);
     };
 
@@ -183,14 +247,7 @@ var App = (function() {
       appContainer.addEventListener('click', handleBubblesModeTap, false);
       appContainer.addEventListener('touchend', function(e) {
         if (currentMode === 'bubbles') {
-          var target = e.target;
-          var isBtn = target && (
-            target.tagName === 'BUTTON' || 
-            (target.closest && target.closest('button')) || 
-            (target.classList && target.classList.contains('theme-pill')) || 
-            (target.closest && target.closest('.theme-pill'))
-          );
-          if (isBtn) return;
+          if (isUiControlTap(e.target)) return; // DO NOT preventDefault or intercept button touches!
           if (e.cancelable) e.preventDefault();
           onBubbleInteraction(e);
         }
@@ -216,7 +273,15 @@ var App = (function() {
     currentTheme = theme;
     targetItem = null;
     updateThemePills(theme);
-    AudioEngine.playChime(783.99);
+    try {
+      AudioEngine.playChime(783.99);
+    } catch (e) {}
+
+    // If user selects any theme pill while in bubbles mode, seamlessly exit bubbles and open that theme!
+    if (currentMode === 'bubbles') {
+      setMode('explore');
+      return;
+    }
 
     if (theme === 'feed' || theme === 'songs') {
       currentMode = 'explore';
@@ -234,8 +299,6 @@ var App = (function() {
 
     if (currentMode === 'find') {
       renderFindStage();
-    } else if (currentMode === 'bubbles') {
-      renderBubblesStage();
     } else {
       renderCurrentTheme();
     }
@@ -721,7 +784,10 @@ var App = (function() {
       '<div class="bubbles-info-bar">' +
         '<span class="bubbles-info-title">🫧 Pop the Bubbles!</span>' +
         '<span class="bubbles-pop-counter-pill">⭐ <span id="bubble-pop-count">' + bubblePopCount + '</span> Popped</span>' +
-        '<button id="bubbles-back-btn" class="bubbles-back-btn">🌟 Exit</button>' +
+        '<button id="bubbles-back-btn" class="bubbles-back-btn" type="button">' +
+          '<span class="bubbles-back-icon">🌟</span>' +
+          '<span>Exit Bubbles</span>' +
+        '</button>' +
       '</div>' +
       '<div class="bubbles-sky-tap-hint">Tap floating bubbles to hear words! 🫧</div>'
     );
@@ -733,6 +799,16 @@ var App = (function() {
         if (e && e.stopPropagation) e.stopPropagation();
         setMode('explore');
       });
+      // Direct DOM property fallbacks for 100% guarantee on iOS 12 Safari
+      backBtn.onclick = function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        setMode('explore');
+      };
+      backBtn.ontouchend = function(e) {
+        if (e && e.cancelable) e.preventDefault();
+        if (e && e.stopPropagation) e.stopPropagation();
+        setMode('explore');
+      };
     }
 
     showPrompt("Pop the bubbles! Pop pop pop!", "🫧");
@@ -778,25 +854,39 @@ var App = (function() {
     if (modeFindBtn) modeFindBtn.className = 'mode-btn' + (mode === 'find' ? ' active' : '');
     if (modeBubblesBtn) modeBubblesBtn.className = 'mode-btn' + (mode === 'bubbles' ? ' active' : '');
 
-    if (mode === 'explore') {
-      ParticleSystem.clearBubbles();
-      AudioEngine.playClip('mode_explore');
-      renderCurrentTheme();
-    } else if (mode === 'find') {
-      ParticleSystem.clearBubbles();
-      if (currentTheme === 'feed' || currentTheme === 'songs') {
-        currentTheme = 'animals';
-        updateThemePills('animals');
+    try {
+      if (mode === 'explore') {
+        ParticleSystem.clearBubbles();
+        try {
+          AudioEngine.playClip('mode_explore');
+        } catch (e) {}
+        renderCurrentTheme();
+      } else if (mode === 'find') {
+        ParticleSystem.clearBubbles();
+        if (currentTheme === 'feed' || currentTheme === 'songs') {
+          currentTheme = 'animals';
+          updateThemePills('animals');
+        }
+        try {
+          AudioEngine.playClip('mode_find');
+        } catch (e) {}
+        renderFindStage();
+      } else if (mode === 'bubbles') {
+        if (currentTheme === 'feed' || currentTheme === 'songs') {
+          currentTheme = 'animals';
+          updateThemePills('animals');
+        }
+        try {
+          AudioEngine.playClip('mode_bubbles');
+        } catch (e) {}
+        renderBubblesStage();
       }
-      AudioEngine.playClip('mode_find');
-      renderFindStage();
-    } else if (mode === 'bubbles') {
-      if (currentTheme === 'feed' || currentTheme === 'songs') {
-        currentTheme = 'animals';
-        updateThemePills('animals');
-      }
-      AudioEngine.playClip('mode_bubbles');
-      renderBubblesStage();
+    } catch (err) {
+      console.error('Mode switch caught error:', err);
+      // Fallback: Always guarantee stage renders
+      if (mode === 'explore') renderCurrentTheme();
+      else if (mode === 'find') renderFindStage();
+      else if (mode === 'bubbles') renderBubblesStage();
     }
   }
 

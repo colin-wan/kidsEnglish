@@ -194,80 +194,99 @@ var AudioEngine = (function() {
 
   // Play pre-recorded American English audio
   function playClip(key, onEnded) {
-    unlock();
-    
-    // Stop any ongoing voice audio to prevent overlapping speech
-    if (currentBufferSource) {
-      try {
-        currentBufferSource.stop(0);
-      } catch (e) {}
-      currentBufferSource = null;
-    }
-    if (currentVoiceAudio) {
-      try {
-        currentVoiceAudio.pause();
-        currentVoiceAudio.currentTime = 0;
-      } catch (err) {}
-      currentVoiceAudio = null;
-    }
+    try {
+      unlock();
+      
+      // Stop any ongoing voice audio to prevent overlapping speech
+      if (currentBufferSource) {
+        try {
+          currentBufferSource.stop(0);
+        } catch (e) {}
+        currentBufferSource = null;
+      }
+      if (currentVoiceAudio) {
+        try {
+          currentVoiceAudio.pause();
+          currentVoiceAudio.currentTime = 0;
+        } catch (err) {}
+        currentVoiceAudio = null;
+      }
 
-    var ctx = getAudioContext();
-    // 1. Try zero-latency Web Audio AudioBuffer if decoded
-    if (ctx && soundBuffers[key]) {
-      try {
-        var bSource = ctx.createBufferSource();
-        bSource.buffer = soundBuffers[key];
-        bSource.connect(ctx.destination);
-        currentBufferSource = bSource;
+      var ctx = getAudioContext();
+      // 1. Try zero-latency Web Audio AudioBuffer if decoded
+      if (ctx && soundBuffers[key]) {
+        try {
+          var bSource = ctx.createBufferSource();
+          bSource.buffer = soundBuffers[key];
+          bSource.connect(ctx.destination);
+          currentBufferSource = bSource;
 
-        bSource.onended = function() {
-          if (currentBufferSource === bSource) {
-            currentBufferSource = null;
+          bSource.onended = function() {
+            if (currentBufferSource === bSource) {
+              currentBufferSource = null;
+            }
+            if (typeof onEnded === 'function') {
+              onEnded();
+            }
+          };
+
+          bSource.start(0);
+          return;
+        } catch (err) {
+          console.warn('Buffer play failed, using Audio tag fallback', err);
+        }
+      }
+
+      // 2. Fallback to HTML5 Audio Element
+      var audio = audioElements[key];
+      if (!audio && audioFiles[key]) {
+        try {
+          audio = new Audio(audioFiles[key]);
+          audioElements[key] = audio;
+        } catch (errAudio) {}
+      }
+
+      if (audio) {
+        currentVoiceAudio = audio;
+        try {
+          audio.currentTime = 0;
+        } catch (errTime) {}
+        
+        var endedHandler = function() {
+          try {
+            audio.removeEventListener('ended', endedHandler);
+          } catch (e) {}
+          if (currentVoiceAudio === audio) {
+            currentVoiceAudio = null;
           }
           if (typeof onEnded === 'function') {
             onEnded();
           }
         };
+        try {
+          audio.addEventListener('ended', endedHandler);
+        } catch (e) {}
 
-        bSource.start(0);
-        return;
-      } catch (err) {
-        console.warn('Buffer play failed, using Audio tag fallback', err);
-      }
-    }
-
-    // 2. Fallback to HTML5 Audio Element
-    var audio = audioElements[key];
-    if (!audio && audioFiles[key]) {
-      audio = new Audio(audioFiles[key]);
-      audioElements[key] = audio;
-    }
-
-    if (audio) {
-      currentVoiceAudio = audio;
-      audio.currentTime = 0;
-      
-      var endedHandler = function() {
-        audio.removeEventListener('ended', endedHandler);
-        if (currentVoiceAudio === audio) {
-          currentVoiceAudio = null;
-        }
-        if (typeof onEnded === 'function') {
-          onEnded();
-        }
-      };
-      audio.addEventListener('ended', endedHandler);
-
-      var playPromise = audio.play();
-      if (playPromise && playPromise.catch) {
-        playPromise.catch(function(err) {
-          console.warn('Audio play failed, falling back to speech synthesis:', err);
+        try {
+          var playPromise = audio.play();
+          if (playPromise && playPromise.catch) {
+            playPromise.catch(function(err) {
+              console.warn('Audio play failed, falling back to speech synthesis:', err);
+              fallbackSpeech(key, onEnded);
+            });
+          }
+        } catch (errPlay) {
           fallbackSpeech(key, onEnded);
-        });
+        }
+      } else {
+        // 3. Fallback to SpeechSynthesis
+        fallbackSpeech(key, onEnded);
       }
-    } else {
-      // 3. Fallback to SpeechSynthesis
-      fallbackSpeech(key, onEnded);
+    } catch (outerErr) {
+      console.warn('playClip fatal error intercepted safely:', outerErr);
+      if (typeof onEnded === 'function') {
+        try { onEnded(); } catch (e) {}
+      }
     }
   }
 
