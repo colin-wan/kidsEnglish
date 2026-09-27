@@ -165,17 +165,35 @@ var App = (function() {
       }
     };
 
-    var canvasEl = document.getElementById('particles-canvas');
-    if (canvasEl) {
-      canvasEl.addEventListener('click', onBubbleInteraction, false);
-      canvasEl.addEventListener('touchend', function(e) {
-        if (currentMode === 'bubbles' && e.cancelable) e.preventDefault();
-        onBubbleInteraction(e);
-      }, false);
-    }
-    if (playgroundEl) {
-      playgroundEl.addEventListener('click', function(e) {
-        if (currentMode === 'bubbles') onBubbleInteraction(e);
+    var handleBubblesModeTap = function(e) {
+      if (currentMode !== 'bubbles') return;
+      var target = e.target;
+      var isBtn = target && (
+        target.tagName === 'BUTTON' || 
+        (target.closest && target.closest('button')) || 
+        (target.classList && target.classList.contains('theme-pill')) || 
+        (target.closest && target.closest('.theme-pill'))
+      );
+      if (isBtn) return; // Allow buttons and theme pills to click freely!
+      onBubbleInteraction(e);
+    };
+
+    var appContainer = document.getElementById('app-container');
+    if (appContainer) {
+      appContainer.addEventListener('click', handleBubblesModeTap, false);
+      appContainer.addEventListener('touchend', function(e) {
+        if (currentMode === 'bubbles') {
+          var target = e.target;
+          var isBtn = target && (
+            target.tagName === 'BUTTON' || 
+            (target.closest && target.closest('button')) || 
+            (target.classList && target.classList.contains('theme-pill')) || 
+            (target.closest && target.closest('.theme-pill'))
+          );
+          if (isBtn) return;
+          if (e.cancelable) e.preventDefault();
+          onBubbleInteraction(e);
+        }
       }, false);
     }
   }
@@ -565,6 +583,9 @@ var App = (function() {
       '</div>' +
       '<button class="find-replay-btn" id="find-replay-btn">' +
         '<span>🔊 Listen</span>' +
+      '</button>' +
+      '<button class="bubbles-back-btn" id="find-back-btn">' +
+        '<span>🌟 Exit</span>' +
       '</button>'
     );
     stage.appendChild(questionBox);
@@ -609,6 +630,14 @@ var App = (function() {
       attachTouchOrClick(replayBtn, function(e) {
         if (e && e.stopPropagation) e.stopPropagation();
         playTargetPrompt();
+      });
+    }
+
+    var findBackBtn = document.getElementById('find-back-btn');
+    if (findBackBtn) {
+      attachTouchOrClick(findBackBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        setMode('explore');
       });
     }
 
@@ -692,18 +721,21 @@ var App = (function() {
       '<div class="bubbles-info-bar">' +
         '<span class="bubbles-info-title">🫧 Pop the Bubbles!</span>' +
         '<span class="bubbles-pop-counter-pill">⭐ <span id="bubble-pop-count">' + bubblePopCount + '</span> Popped</span>' +
+        '<button id="bubbles-back-btn" class="bubbles-back-btn">🌟 Exit</button>' +
       '</div>' +
       '<div class="bubbles-sky-tap-hint">Tap floating bubbles to hear words! 🫧</div>'
     );
     playgroundEl.appendChild(stage);
 
-    showPrompt("Pop the bubbles! Pop pop pop!", "🫧");
-
-    // Enable direct touch on canvas
-    var canvasEl = document.getElementById('particles-canvas');
-    if (canvasEl) {
-      canvasEl.style.pointerEvents = 'auto';
+    var backBtn = document.getElementById('bubbles-back-btn');
+    if (backBtn) {
+      attachTouchOrClick(backBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        setMode('explore');
+      });
     }
+
+    showPrompt("Pop the bubbles! Pop pop pop!", "🫧");
 
     // Spawn 4 immediate bubbles at varying heights
     var viewHeight = window.innerHeight || 600;
@@ -742,19 +774,15 @@ var App = (function() {
     bubbleSpawnTimer = null;
     isFindTransitioning = false;
 
-    var canvasEl = document.getElementById('particles-canvas');
-
     if (modeExploreBtn) modeExploreBtn.className = 'mode-btn' + (mode === 'explore' ? ' active' : '');
     if (modeFindBtn) modeFindBtn.className = 'mode-btn' + (mode === 'find' ? ' active' : '');
     if (modeBubblesBtn) modeBubblesBtn.className = 'mode-btn' + (mode === 'bubbles' ? ' active' : '');
 
     if (mode === 'explore') {
-      if (canvasEl) canvasEl.style.pointerEvents = 'none';
       ParticleSystem.clearBubbles();
       AudioEngine.playClip('mode_explore');
       renderCurrentTheme();
     } else if (mode === 'find') {
-      if (canvasEl) canvasEl.style.pointerEvents = 'none';
       ParticleSystem.clearBubbles();
       if (currentTheme === 'feed' || currentTheme === 'songs') {
         currentTheme = 'animals';
