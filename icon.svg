@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4facfe" />
+      <stop offset="100%" stop-color="#00f2fe" />
+    </linearGradient>
+    <linearGradient id="mane" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF9800" />
+      <stop offset="100%" stop-color="#F57C00" />
+    </linearGradient>
+    <linearGradient id="face" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE082" />
+      <stop offset="100%" stop-color="#FFCA28" />
+    </linearGradient>
+  </defs>
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" rx="115" fill="url(#bg)" />
+  
+  <!-- Lion Mane -->
+  <g transform="translate(256, 270)">
+    <circle r="160" fill="url(#mane)" />
+    <!-- Mane bumps -->
+    <circle cx="-130" cy="-60" r="55" fill="url(#mane)" />
+    <circle cx="-140" cy="40" r="55" fill="url(#mane)" />
+    <circle cx="-90" cy="120" r="55" fill="url(#mane)" />
+    <circle cx="0" cy="150" r="55" fill="url(#mane)" />
+    <circle cx="90" cy="120" r="55" fill="url(#mane)" />
+    <circle cx="140" cy="40" r="55" fill="url(#mane)" />
+    <circle cx="130" cy="-60" r="55" fill="url(#mane)" />
+    <circle cx="70" cy="-135" r="55" fill="url(#mane)" />
+    <circle cx="-70" cy="-135" r="55" fill="url(#mane)" />
+    <circle cx="0" cy="-150" r="55" fill="url(#mane)" />
+    
+    <!-- Ears -->
+    <circle cx="-100" cy="-90" r="36" fill="#F57C00" />
+    <circle cx="-100" cy="-90" r="22" fill="#FFAB91" />
+    <circle cx="100" cy="-90" r="36" fill="#F57C00" />
+    <circle cx="100" cy="-90" r="22" fill="#FFAB91" />
+    
+    <!-- Face -->
+    <circle r="115" fill="url(#face)" />
+    
+    <!-- Rosy Cheeks -->
+    <ellipse cx="-60" cy="25" rx="22" ry="14" fill="#FF8A80" opacity="0.6" />
+    <ellipse cx="60" cy="25" rx="22" ry="14" fill="#FF8A80" opacity="0.6" />
+    
+    <!-- Big Friendly Eyes -->
+    <ellipse cx="-45" cy="-20" rx="16" ry="22" fill="#263238" />
+    <circle cx="-40" cy="-26" r="7" fill="#FFFFFF" />
+    <circle cx="-48" cy="-14" r="3.5" fill="#FFFFFF" />
+    
+    <ellipse cx="45" cy="-20" rx="16" ry="22" fill="#263238" />
+    <circle cx="50" cy="-26" r="7" fill="#FFFFFF" />
+    <circle cx="42" cy="-14" r="3.5" fill="#FFFFFF" />
+    
+    <!-- Snout & Nose -->
+    <ellipse cx="0" cy="30" rx="42" ry="30" fill="#FFF9C4" />
+    <path d="M -22 15 Q 0 8 22 15 Q 0 42 -22 15 Z" fill="#8D6E63" />
+    <path d="M 0 32 L 0 46 M -16 46 Q 0 58 16 46" stroke="#5D4037" stroke-width="4" stroke-linecap="round" fill="none" />
+    
+    <!-- Little Crown on Top -->
+    <path d="M -40 -105 L -25 -80 L 0 -115 L 25 -80 L 40 -105 L 30 -65 L -30 -65 Z" fill="#FFD54F" stroke="#FFA000" stroke-width="4" stroke-linejoin="round" />
+    <circle cx="0" cy="-115" r="6" fill="#E91E63" />
+    <circle cx="-40" cy="-105" r="5" fill="#29B6F6" />
+    <circle cx="40" cy="-105" r="5" fill="#AB47BC" />
+  </g>
+  
+  <!-- Sparkles around -->
+  <polygon points="90,90 96,75 111,70 96,65 90,50 84,65 69,70 84,75" fill="#FFF" />
+  <polygon points="420,100 425,88 438,84 425,80 420,68 415,80 402,84 415,88" fill="#FFF" />
+  <polygon points="430,390 436,375 451,370 436,365 430,350 424,365 409,370 424,375" fill="#FFEB3B" />
+</svg>

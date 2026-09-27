@@ -1,0 +1,17 @@
+{
+  "name": "Toddler Safari - English Enlightenment",
+  "short_name": "Safari Kids",
+  "description": "Lively English enlightenment web app for toddlers (2-3 years old)",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#8be3f6",
+  "theme_color": "#ffcd38",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
