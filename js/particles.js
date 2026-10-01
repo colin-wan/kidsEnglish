@@ -239,12 +239,18 @@ var ParticleSystem = (function() {
     }
   }
 
+  function stopLoop() {
+    isRunning = false;
+  }
+
   return {
     init: init,
     burst: burst,
     spawnBubble: spawnBubble,
     checkBubbleTap: checkBubbleTap,
     clearBubbles: clearBubbles,
-    getBubbleCount: getBubbleCount
+    getBubbleCount: getBubbleCount,
+    startLoop: startLoop,
+    stopLoop: stopLoop
   };
 })();

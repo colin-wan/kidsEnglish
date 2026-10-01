@@ -1,0 +1,370 @@
+/* 
+ * Toddler Safari v3.0 Preview Stylesheet
+ * Compatible with iOS 12.5.8 Safari iPad & Desktop Browsers
+ * NO flexbox gap (unsupported in iOS 12 WebKit 605)
+ */
+
+/* ==========================================
+   TOP BAR PAUSE & PREVIEW CONTROLS
+   ========================================== */
+.preview-badge-container {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  pointer-events: auto;
+}
+
+.preview-badge {
+  display: inline-block;
+  background: rgba(38, 50, 56, 0.88);
+  color: #FFF9C4;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: background 0.2s ease;
+}
+
+.preview-badge:active {
+  background: #E65100;
+  color: #FFF;
+}
+
+/* Pause / Break Button in Top Bar */
+.pause-btn {
+  background: linear-gradient(to bottom, #FFE082 0%, #FFCA28 100%);
+  border: 3px solid #FFA000;
+  border-radius: 24px;
+  padding: 8px 14px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #B71C1C;
+  cursor: pointer;
+  margin-left: 10px;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(255, 160, 0, 0.35);
+  transition: transform 0.15s ease, background 0.15s ease;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+
+.pause-btn:active {
+  transform: scale(0.92);
+  background: #FFD54F;
+}
+
+.pause-btn-icon {
+  font-size: 18px;
+  margin-right: 5px;
+}
+
+/* ==========================================
+   PAUSE / NIGHT-SKY SLEEP BREAK MODAL
+   ========================================== */
+.pause-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 25, 47, 0.94);
+  z-index: 999;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-justify-content: center;
+  justify-content: center;
+  -webkit-align-items: center;
+  align-items: center;
+  animation: pauseFadeIn 0.3s ease;
+  touch-action: manipulation;
+}
+
+.pause-overlay.hidden {
+  display: none !important;
+}
+
+@keyframes pauseFadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.pause-card {
+  background: linear-gradient(145deg, #1A365D 0%, #0F172A 100%);
+  border: 4px solid #FCD34D;
+  border-radius: 36px;
+  padding: 32px 28px;
+  max-width: 520px;
+  width: 88%;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 40px rgba(252, 211, 77, 0.35);
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  -webkit-align-items: center;
+  align-items: center;
+}
+
+.pause-celestial-box {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  margin-bottom: 16px;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-justify-content: center;
+  justify-content: center;
+  -webkit-align-items: center;
+  align-items: center;
+}
+
+.pause-moon {
+  font-size: 78px;
+  animation: moonGlow 3s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 15px #FDE047);
+}
+
+@keyframes moonGlow {
+  0% { transform: scale(1) rotate(-5deg); filter: drop-shadow(0 0 10px #FDE047); }
+  100% { transform: scale(1.08) rotate(5deg); filter: drop-shadow(0 0 25px #FEF08A); }
+}
+
+.pause-star-1, .pause-star-2, .pause-star-3 {
+  position: absolute;
+  font-size: 24px;
+}
+
+.pause-star-1 {
+  top: 5px;
+  right: 6px;
+  animation: starTwinkle 2s infinite ease-in-out;
+}
+
+.pause-star-2 {
+  bottom: 12px;
+  left: 4px;
+  animation: starTwinkle 2.5s infinite ease-in-out 0.5s;
+}
+
+.pause-star-3 {
+  top: 25px;
+  left: 2px;
+  animation: starTwinkle 1.8s infinite ease-in-out 1s;
+}
+
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+
+.pause-title {
+  font-size: 30px;
+  font-weight: 900;
+  color: #FEF08A;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.pause-message-en {
+  font-size: 18px;
+  font-weight: 700;
+  color: #E2E8F0;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.pause-message-cn {
+  font-size: 15px;
+  font-weight: 600;
+  color: #94A3B8;
+  margin-bottom: 24px;
+}
+
+.big-resume-btn {
+  background: linear-gradient(to bottom, #10B981 0%, #059669 100%);
+  border: 4px solid #FFFFFF;
+  border-radius: 36px;
+  padding: 14px 44px;
+  font-size: 24px;
+  font-weight: 900;
+  color: #FFFFFF;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  transition: transform 0.15s ease;
+  touch-action: manipulation;
+}
+
+.big-resume-btn:active {
+  transform: scale(0.92);
+}
+
+.resume-btn-icon {
+  font-size: 28px;
+  margin-right: 10px;
+}
+
+/* ==========================================
+   FEEDING MINI-GAME EXPANDED STYLES (v3.0)
+   ========================================== */
+.feeding-header-bar {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.feed-progress-pill {
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid #FF9800;
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #E65100;
+  margin-right: 12px;
+}
+
+.feed-skip-btn {
+  background: #FFF9C4;
+  border: 2px solid #FFA000;
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #B71C1C;
+  cursor: pointer;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.feed-skip-btn:active {
+  transform: scale(0.94);
+}
+
+/* Dynamic Food Tray supporting 4 choices cleanly */
+.food-tray-v3 {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-justify-content: center;
+  justify-content: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 10px 18px;
+  border-radius: 36px;
+  border: 4px solid #FFFFFF;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.14);
+  max-width: 94%;
+}
+
+.food-item-v3 {
+  width: 90px;
+  height: 90px;
+  margin: 6px 10px;
+  background: #FFFFFF;
+  border: 4px solid #FFE082;
+  border-radius: 24px;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  touch-action: manipulation;
+}
+
+.food-item-v3:active {
+  transform: scale(1.18) translateY(-6px);
+}
+
+.food-item-v3.wrong-shake {
+  animation: wrongShake 0.45s ease;
+  border-color: #FF7043;
+}
+
+@keyframes wrongShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px) rotate(-4deg); }
+  75% { transform: translateX(8px) rotate(4deg); }
+}
+
+.food-item-icon-v3 {
+  font-size: 42px;
+}
+
+.food-item-name-v3 {
+  font-size: 13px;
+  font-weight: 800;
+  color: #4E342E;
+  margin-top: 2px;
+}
+
+/* ==========================================
+   ENHANCED RESPONSIVE GRID FOR 12 ITEMS
+   ========================================== */
+@media screen and (min-width: 768px) {
+  .playground-area {
+    padding-bottom: 20px;
+  }
+  
+  .animal-pod {
+    width: 21%;
+    min-width: 140px;
+    height: 180px;
+    margin: 8px 1.5%;
+  }
+}
+
+@media screen and (max-width: 767px) {
+  .animal-pod {
+    width: 44%;
+    min-width: 120px;
+    height: 150px;
+    margin: 6px 2%;
+  }
+
+  .food-item-v3 {
+    width: 76px;
+    height: 76px;
+    margin: 4px 6px;
+  }
+  
+  .food-item-icon-v3 {
+    font-size: 34px;
+  }
+  
+  .pause-title {
+    font-size: 24px;
+  }
+  
+  .big-resume-btn {
+    font-size: 20px;
+    padding: 12px 32px;
+  }
+}

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Toddler Safari v3.0 Preview - American English Enlightenment</title>
+  
+  <!-- Viewport optimized for iPad and touch protection -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  
+  <!-- Apple iOS 12.5.8 Safari Fullscreen Web App Meta -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Safari v3">
+  <meta name="format-detection" content="telephone=no">
+  
+  <!-- App Icon & Manifest -->
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="style.css?v=2.4">
+  <link rel="stylesheet" href="style_v3.css?v=3.0">
+</head>
+<body>
+
+  <!-- Top Preview Version Indicator -->
+  <div class="preview-badge-container">
+    <a href="index.html" class="preview-badge" title="Click to return to the stable release">🧪 Test Preview v3.0 | 切换回稳定版</a>
+  </div>
+
+  <div id="app-container">
+    
+    <!-- Dynamic Nature Scenery (Interactive Background) -->
+    <div class="scenery">
+      <!-- Interactive Happy Sun -->
+      <div id="sun-item" class="sun-item" title="Tap the sunny sun!">
+        <svg viewBox="0 0 100 100" class="sun-svg">
+          <g transform="translate(50, 50)">
+            <path d="M 0 -46 L 0 -36 M 32.5 -32.5 L 25.5 -25.5 M 46 0 L 36 0 M 32.5 32.5 L 25.5 25.5 M 0 46 L 0 36 M -32.5 32.5 L -25.5 25.5 M -46 0 L -36 0 M -32.5 -32.5 L -25.5 -25.5" stroke="#FFA000" stroke-width="6" stroke-linecap="round"/>
+            <circle r="30" fill="#FFD54F" stroke="#FFA000" stroke-width="3"/>
+            <ellipse cx="-10" cy="-4" rx="3.5" ry="5" fill="#5D4037"/>
+            <ellipse cx="10" cy="-4" rx="3.5" ry="5" fill="#5D4037"/>
+            <circle cx="-14" cy="4" r="4" fill="#FF8A80" opacity="0.6"/>
+            <circle cx="14" cy="4" r="4" fill="#FF8A80" opacity="0.6"/>
+            <path d="M -7 6 Q 0 14 7 6" stroke="#5D4037" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Interactive Puffy Clouds -->
+      <div id="cloud-1" class="cloud-item cloud-1" title="Tap the cloud!">
+        <svg viewBox="0 0 120 70" width="100%" height="100%">
+          <path d="M 25 55 Q 10 55 10 40 Q 10 25 30 25 Q 40 10 65 12 Q 90 10 95 30 Q 115 30 115 45 Q 115 55 95 55 Z" fill="#FFFFFF" opacity="0.92"/>
+        </svg>
+      </div>
+
+      <div id="cloud-2" class="cloud-item cloud-2" title="Tap the cloud!">
+        <svg viewBox="0 0 140 80" width="100%" height="100%">
+          <path d="M 30 65 Q 12 65 12 48 Q 12 32 35 30 Q 48 12 75 14 Q 105 12 112 35 Q 135 35 135 52 Q 135 65 110 65 Z" fill="#FFFFFF" opacity="0.88"/>
+        </svg>
+      </div>
+
+      <!-- Rolling Green Hills & Pond -->
+      <div class="hills">
+        <div class="hill-back"></div>
+        <div class="hill-front"></div>
+        <div class="pond"></div>
+      </div>
+    </div>
+
+    <!-- Top Status Bar: Title, Star Counter, Modes & Pause Button -->
+    <header class="top-bar">
+      <!-- App Brand -->
+      <div class="app-brand">
+        <span class="brand-icon">🦁</span>
+        <span class="brand-title">Toddler Safari</span>
+        <!-- Star Counter Jar -->
+        <div class="star-counter-pill" title="Stars collected">
+          <span class="star-icon">⭐</span>
+          <span id="star-count" class="star-count">0</span>
+        </div>
+      </div>
+
+      <!-- Friendly Mode Selection Tabs & Pause Button -->
+      <div class="mode-switch-group">
+        <button id="mode-explore" class="mode-btn active" title="Free Explore">
+          <span class="mode-btn-icon">🌟</span>
+          <span>Explore</span>
+        </button>
+        <button id="mode-find" class="mode-btn" title="Find Game">
+          <span class="mode-btn-icon">❓</span>
+          <span>Find</span>
+        </button>
+        <button id="mode-bubbles" class="mode-btn" title="Pop Bubbles">
+          <span class="mode-btn-icon">🫧</span>
+          <span>Bubbles</span>
+        </button>
+
+        <!-- ⏸️ Pause / Break Button -->
+        <button id="pause-btn" class="pause-btn" title="Take a break / 休息一下">
+          <span class="pause-btn-icon">⏸️</span>
+          <span>Pause</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Theme Selection Navigation Bar (Multi-Theme Enlightenment) -->
+    <nav id="theme-nav" class="theme-nav-bar">
+      <button class="theme-pill active" data-theme="animals">
+        <span class="theme-pill-icon">🦁</span>
+        <span>Animals (12)</span>
+      </button>
+      <button class="theme-pill" data-theme="fruits">
+        <span class="theme-pill-icon">🍎</span>
+        <span>Yummy Food (12)</span>
+      </button>
+      <button class="theme-pill" data-theme="vehicles">
+        <span class="theme-pill-icon">🚗</span>
+        <span>Vehicles (8)</span>
+      </button>
+      <button class="theme-pill" data-theme="colors">
+        <span class="theme-pill-icon">🎨</span>
+        <span>Colors (10)</span>
+      </button>
+      <button class="theme-pill" data-theme="feed">
+        <span class="theme-pill-icon">🍼</span>
+        <span>Feed Friends (8)</span>
+      </button>
+      <button class="theme-pill" data-theme="songs">
+        <span class="theme-pill-icon">🎵</span>
+        <span>Sing Songs (6)</span>
+      </button>
+    </nav>
+
+    <!-- Auditory & Visual Prompt Banner -->
+    <div id="prompt-banner" class="prompt-banner">
+      <span id="prompt-icon" class="prompt-sound-icon">🦁</span>
+      <span id="prompt-text">Tap any animal to play!</span>
+    </div>
+
+    <!-- Main Playground Stage -->
+    <main id="playground" class="playground-area"></main>
+
+    <!-- Bottom Interactive Singing Flowers (Pentatonic C D E G A) -->
+    <footer class="bottom-nature-bar">
+      <div class="flower-touchable" title="Do">
+        <svg viewBox="0 0 60 70" width="100%" height="100%">
+          <path d="M 30 40 L 30 70 M 24 55 Q 12 50 18 42" stroke="#43A047" stroke-width="4" stroke-linecap="round" fill="none"/>
+          <circle cx="30" cy="25" r="16" fill="#FF5252"/>
+          <circle cx="30" cy="25" r="7" fill="#FFEB3B"/>
+        </svg>
+      </div>
+      <div class="flower-touchable" title="Re">
+        <svg viewBox="0 0 60 70" width="100%" height="100%">
+          <path d="M 30 40 L 30 70 M 36 55 Q 48 50 42 42" stroke="#43A047" stroke-width="4" stroke-linecap="round" fill="none"/>
+          <circle cx="30" cy="25" r="16" fill="#FF9800"/>
+          <circle cx="30" cy="25" r="7" fill="#FFF59D"/>
+        </svg>
+      </div>
+      <div class="flower-touchable" title="Mi">
+        <svg viewBox="0 0 60 70" width="100%" height="100%">
+          <path d="M 30 40 L 30 70 M 24 55 Q 12 50 18 42" stroke="#43A047" stroke-width="4" stroke-linecap="round" fill="none"/>
+          <circle cx="30" cy="25" r="16" fill="#FFEB3B"/>
+          <circle cx="30" cy="25" r="7" fill="#FF7043"/>
+        </svg>
+      </div>
+      <div class="flower-touchable" title="Sol">
+        <svg viewBox="0 0 60 70" width="100%" height="100%">
+          <path d="M 30 40 L 30 70 M 36 55 Q 48 50 42 42" stroke="#43A047" stroke-width="4" stroke-linecap="round" fill="none"/>
+          <circle cx="30" cy="25" r="16" fill="#29B6F6"/>
+          <circle cx="30" cy="25" r="7" fill="#FFF"/>
+        </svg>
+      </div>
+      <div class="flower-touchable" title="La">
+        <svg viewBox="0 0 60 70" width="100%" height="100%">
+          <path d="M 30 40 L 30 70 M 24 55 Q 12 50 18 42" stroke="#43A047" stroke-width="4" stroke-linecap="round" fill="none"/>
+          <circle cx="30" cy="25" r="16" fill="#AB47BC"/>
+          <circle cx="30" cy="25" r="7" fill="#FFEB3B"/>
+        </svg>
+      </div>
+    </footer>
+
+    <!-- Canvas for Confetti, Stars & Floating Bubbles -->
+    <canvas id="particles-canvas"></canvas>
+
+    <!-- 🌙 Peaceful Night-Sky Pause Modal -->
+    <div id="pause-modal" class="pause-overlay hidden">
+      <div class="pause-card">
+        <div class="pause-celestial-box">
+          <span class="pause-moon">🌙</span>
+          <span class="pause-star-1">✨</span>
+          <span class="pause-star-2">⭐</span>
+          <span class="pause-star-3">✨</span>
+        </div>
+        <h2 class="pause-title">Rest & Relax / 休息一下</h2>
+        <p class="pause-message-en">Time for a gentle break! Rest your eyes, take a sip of water, or do a happy stretch.</p>
+        <p class="pause-message-cn">让眼睛休息一下，喝口水，伸个懒腰吧！</p>
+        <button id="resume-btn" class="big-resume-btn" type="button">
+          <span class="resume-btn-icon">▶</span>
+          <span>RESUME / 继续玩</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Splash Screen (Required for iOS 12 Audio Context Unlocking) -->
+    <div id="splash-overlay" class="splash-overlay">
+      <div class="splash-characters">
+        <div class="splash-animal-badge">🐘</div>
+        <div class="splash-animal-badge">🦁</div>
+        <div class="splash-animal-badge">🐒</div>
+      </div>
+      <h1 class="splash-title">Toddler Safari v3.0</h1>
+      <p class="splash-subtitle">English Enlightenment Preview (12 Animals, 12 Foods, 8 Vehicles)</p>
+      <button id="start-btn" class="big-start-btn">
+        <span class="btn-play-icon">▶</span>
+        <span>TAP TO PLAY!</span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- JavaScript Modules (Loaded in order, ES5/ES6 iOS 12 safe) -->
+  <script src="js/audio.js?v=2.4"></script>
+  <script src="js/particles.js?v=2.4"></script>
+  <script src="js/content_data_v3.js?v=3.0"></script>
+  <script src="js/app_v3.js?v=3.0"></script>
+
+</body>
+</html>
