@@ -113,50 +113,48 @@ var AudioEngine = (function() {
     mode_find: 'audio/mode_find.mp3',
     mode_bubbles: 'audio/mode_bubbles.mp3',
 
-    // New Animals (v3 Expansion)
-    panda_phrase: 'audio/panda_phrase.m4a',
-    cow_phrase: 'audio/cow_phrase.m4a',
-    sheep_phrase: 'audio/sheep_phrase.m4a',
-    word_panda: 'audio/word_panda.m4a',
-    word_cow: 'audio/word_cow.m4a',
-    word_sheep: 'audio/word_sheep.m4a',
-    phonics_p: 'audio/phonics_p.m4a',
-    phonics_s: 'audio/phonics_s.m4a',
-    find_panda: 'audio/find_panda.m4a',
-    find_cow: 'audio/find_cow.m4a',
-    find_sheep: 'audio/find_sheep.m4a',
+    // Expanded Animals
+    panda_phrase: 'audio/panda_phrase.mp3',
+    cow_phrase: 'audio/cow_phrase.mp3',
+    sheep_phrase: 'audio/sheep_phrase.mp3',
+    word_panda: 'audio/word_panda.mp3',
+    word_cow: 'audio/word_cow.mp3',
+    word_sheep: 'audio/word_sheep.mp3',
+    phonics_p: 'audio/phonics_p.mp3',
+    phonics_s: 'audio/phonics_s.mp3',
+    find_panda: 'audio/find_panda.mp3',
+    find_cow: 'audio/find_cow.mp3',
+    find_sheep: 'audio/find_sheep.mp3',
 
-    // New Foods
-    fruit_grapes: 'audio/fruit_grapes.m4a',
-    fruit_corn: 'audio/fruit_corn.m4a',
-    fruit_cheese: 'audio/fruit_cheese.m4a',
-    fruit_honey: 'audio/fruit_honey.m4a',
-    fruit_fish: 'audio/fruit_fish.m4a',
-    fruit_bone: 'audio/fruit_bone.m4a',
-    fruit_bamboo: 'audio/fruit_bamboo.m4a',
+    // Expanded Foods
+    fruit_grapes: 'audio/fruit_grapes.mp3',
+    fruit_corn: 'audio/fruit_corn.mp3',
+    fruit_cheese: 'audio/fruit_cheese.mp3',
+    fruit_honey: 'audio/fruit_honey.mp3',
+    fruit_fish: 'audio/fruit_fish.mp3',
+    fruit_bone: 'audio/fruit_bone.mp3',
+    fruit_bamboo: 'audio/fruit_bamboo.mp3',
 
-    // New Vehicles
-    vehicle_boat: 'audio/vehicle_boat.m4a',
-    vehicle_bicycle: 'audio/vehicle_bicycle.m4a',
-    vehicle_firetruck: 'audio/vehicle_firetruck.m4a',
-    vehicle_helicopter: 'audio/vehicle_helicopter.m4a',
+    // Expanded Vehicles
+    vehicle_firetruck: 'audio/vehicle_firetruck.mp3',
+    vehicle_helicopter: 'audio/vehicle_helicopter.mp3',
 
-    // New Colors
-    color_orange: 'audio/color_orange.m4a',
-    color_brown: 'audio/color_brown.m4a',
-    color_white: 'audio/color_white.m4a',
-    color_black: 'audio/color_black.m4a',
+    // Expanded Colors
+    color_orange: 'audio/color_orange.mp3',
+    color_brown: 'audio/color_brown.mp3',
+    color_white: 'audio/color_white.mp3',
+    color_black: 'audio/color_black.mp3',
 
     // Expanded Feeding Friends
-    feed_dog_ask: 'audio/feed_dog_ask.m4a',
-    feed_cat_ask: 'audio/feed_cat_ask.m4a',
-    feed_panda_ask: 'audio/feed_panda_ask.m4a',
-    feed_elephant_ask: 'audio/feed_elephant_ask.m4a',
-    feed_duck_ask: 'audio/feed_duck_ask.m4a',
+    feed_dog_ask: 'audio/feed_dog_ask.mp3',
+    feed_cat_ask: 'audio/feed_cat_ask.mp3',
+    feed_panda_ask: 'audio/feed_panda_ask.mp3',
+    feed_elephant_ask: 'audio/feed_elephant_ask.mp3',
+    feed_duck_ask: 'audio/feed_duck_ask.mp3',
 
     // Pause & Rest Mode
-    pause_take_break: 'audio/pause_take_break.m4a',
-    pause_resume: 'audio/pause_resume.m4a',
+    pause_take_break: 'audio/pause_take_break.mp3',
+    pause_resume: 'audio/pause_resume.mp3',
 
     // Expanded Nursery Rhymes
     song_wheels: 'audio/song_wheels.m4a',

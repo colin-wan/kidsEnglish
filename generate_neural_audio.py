@@ -72,6 +72,19 @@ CLIPS = {
     'mode_find': 'Listen and find it!',
     'mode_bubbles': 'Pop the bubbles! Pop pop pop!',
 
+    # Animals (Expanded)
+    'panda_phrase': 'Panda! P is for Panda. Crunch crunch bamboo!',
+    'cow_phrase': 'Cow! C is for Cow. Moo moo!',
+    'sheep_phrase': 'Sheep! S is for Sheep. Baa baa!',
+    'word_panda': 'Panda',
+    'word_cow': 'Cow',
+    'word_sheep': 'Sheep',
+    'phonics_p': 'P says puh, puh, Panda',
+    'phonics_s': 'S says sss, sss, Sheep',
+    'find_panda': 'Can you find the panda?',
+    'find_cow': 'Where is the cow?',
+    'find_sheep': 'Can you find the sheep?',
+
     # 🍎 Fruits & Foods
     'fruit_apple': 'Apple! A is for Apple. Sweet red apple.',
     'fruit_banana': 'Banana! B is for Banana. Peel the yellow banana.',
@@ -81,6 +94,13 @@ CLIPS = {
     'fruit_carrot': 'Carrot! Crunchy orange carrot.',
     'fruit_milk': 'Milk! Fresh delicious milk.',
     'fruit_cookie': 'Cookie! Sweet yummy cookie.',
+    'fruit_grapes': 'Grapes! Sweet purple grapes.',
+    'fruit_corn': 'Corn! Golden sweet corn.',
+    'fruit_cheese': 'Cheese! Tasty yellow cheese.',
+    'fruit_honey': 'Honey! Sweet golden honey.',
+    'fruit_fish': 'Fish! Fresh little fish.',
+    'fruit_bone': 'Bone! Crunchy tasty bone.',
+    'fruit_bamboo': 'Bamboo! Fresh green bamboo.',
 
     # 🚗 Vehicles
     'vehicle_car': 'Car! Beep beep goes the car.',
@@ -89,6 +109,8 @@ CLIPS = {
     'vehicle_airplane': 'Airplane! Flying high in the clouds.',
     'vehicle_boat': 'Boat! Floating on the water.',
     'vehicle_bicycle': 'Bicycle! Ring ring goes the bell.',
+    'vehicle_firetruck': 'Fire Truck! Wee-woo, wee-woo! Brave and fast.',
+    'vehicle_helicopter': 'Helicopter! Chop chop chop! Flying up so high.',
 
     # 🎨 Colors
     'color_red': 'Red! Like a shiny apple.',
@@ -97,6 +119,10 @@ CLIPS = {
     'color_green': 'Green! Like the soft green grass.',
     'color_purple': 'Purple! Like sweet yummy grapes.',
     'color_pink': 'Pink! Pretty pink flower.',
+    'color_orange': 'Orange! Bright orange.',
+    'color_brown': 'Brown! Teddy bear brown.',
+    'color_white': 'White! Puffy white cloud.',
+    'color_black': 'Black! Shiny black night.',
 
     # 🍼 Feeding Activity
     'feed_prompt': 'The little animals are hungry! Tap the food to feed them!',
@@ -104,12 +130,15 @@ CLIPS = {
     'feed_monkey_ask': 'Milo the monkey wants a banana!',
     'feed_bear_ask': 'Barnaby the bear wants sweet honey!',
     'feed_rabbit_ask': 'The bunny rabbit wants a carrot!',
+    'feed_cat_ask': 'Cleo wants a tasty fish!',
+    'feed_dog_ask': 'Buster wants a crunchy bone!',
+    'feed_panda_ask': 'Panpan wants green bamboo!',
+    'feed_elephant_ask': 'Ellie wants juicy watermelon!',
+    'feed_duck_ask': 'Ducky wants sweet golden corn!',
 
-    # 🎵 Nursery Rhymes / Songs
-    'song_twinkle': 'Twinkle, twinkle, little star! How I wonder what you are!',
-    'song_wheels': 'The wheels on the bus go round and round, all through the town!',
-    'song_abc': 'A, B, C, D, E, F, G, come along and sing with me!',
-    'song_macdonald': 'Old MacDonald had a farm, E-I-E-I-O!'
+    # ⏸️ Pause & Rest Mode
+    'pause_take_break': 'Time for a break! Rest your eyes and have some water.',
+    'pause_resume': "Welcome back! Let's play!"
 }
 
 def download_google_tts(text, out_mp3):
