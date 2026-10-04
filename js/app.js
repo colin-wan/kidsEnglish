@@ -2,7 +2,9 @@
  * Toddler Safari - Multi-Theme Enlightenment Logic
  * Designed for Toddlers (2-3 yo) & iOS 12.5.8 Safari iPad
  * - Standard American English pronunciation
- * - Multi-Themes: Animals, Fruits, Vehicles, Colors, Feed Friends, Sing Songs
+ * - Multi-Themes: Animals, Yummy Food, Vehicles, Colors, Feed Friends, Sing Songs
+ * - Zero-lag, ultra-responsive theme switching between Feed and Sing
+ * - Dedicated Top Bar Pause & Night-sky Sleep Mode
  * - No ES2020 syntax (no ?., no ??)
  */
 
@@ -14,7 +16,22 @@ var App = (function() {
   var bubbleSpawnTimer = null;
   var tapCounters = {};
   var speechTimeout = null;
+  var isPaused = false;
+
+  // Feeding mini-game state & timers
+  var currentFeedingIndex = 0;
+  var isFeeding = false;
   var currentFeedingAnimal = null;
+  var feedPromptTimer = null;
+  var feedChewTimer = null;
+  var feedAdvanceTimer = null;
+
+  // Find mini-game state
+  var isFindTransitioning = false;
+
+  // Bubbles mini-game state
+  var bubblePopCount = 0;
+  var lastBubblePopTime = 0;
 
   // DOM Elements
   var playgroundEl;
@@ -27,6 +44,9 @@ var App = (function() {
   var modeFindBtn;
   var modeBubblesBtn;
   var themeNavEl;
+  var pauseBtn;
+  var pauseModalEl;
+  var resumeBtn;
 
   function init() {
     playgroundEl = document.getElementById('playground');
@@ -39,6 +59,9 @@ var App = (function() {
     modeFindBtn = document.getElementById('mode-find');
     modeBubblesBtn = document.getElementById('mode-bubbles');
     themeNavEl = document.getElementById('theme-nav');
+    pauseBtn = document.getElementById('pause-btn');
+    pauseModalEl = document.getElementById('pause-modal');
+    resumeBtn = document.getElementById('resume-btn');
 
     // Initialize Canvas Particle System
     var canvasEl = document.getElementById('particles-canvas');
@@ -50,7 +73,7 @@ var App = (function() {
     bindEvents();
   }
 
-  // Universal click & touch listener (rock-solid on Mac & iPad)
+  // Universal click & touch listener (rock-solid on iPad iOS 12 & Mac)
   function attachTouchOrClick(element, handler) {
     if (!element) return;
     var lastTrigger = 0;
@@ -95,15 +118,14 @@ var App = (function() {
     }, false);
   }
 
-  // Reliable detection of UI interactive controls (buttons, pills, nav, scenery)
+  // Reliable detection of UI interactive controls
   function isUiControlTap(target) {
     if (!target) return false;
     var el = target.nodeType === 3 ? target.parentNode : target;
     if (!el) return false;
     if (typeof el.closest === 'function') {
-      return !!el.closest('button, .mode-btn, .theme-pill, .bubbles-back-btn, .bubbles-info-bar, .top-bar, .theme-nav-bar, .bottom-nature-bar, .flower-touchable, .sun-item, .cloud-item, #start-btn, .splash-overlay, .find-replay-btn');
+      return !!el.closest('button, .mode-btn, .theme-pill, .bubbles-back-btn, .bubbles-info-bar, .top-bar, .theme-nav-bar, .bottom-nature-bar, .flower-touchable, .sun-item, .cloud-item, #start-btn, .splash-overlay, .find-replay-btn, .pause-btn, .big-resume-btn, .pause-overlay, .feed-skip-btn');
     }
-    // Fallback for older DOM implementations without element.closest
     while (el && el !== document.body && el !== document.documentElement) {
       var tag = (el.tagName || '').toLowerCase();
       var cls = el.className || '';
@@ -117,7 +139,11 @@ var App = (function() {
         cls.indexOf('theme-nav-bar') !== -1 ||
         cls.indexOf('flower-touchable') !== -1 ||
         cls.indexOf('sun-item') !== -1 ||
-        cls.indexOf('cloud-item') !== -1
+        cls.indexOf('cloud-item') !== -1 ||
+        cls.indexOf('pause-btn') !== -1 ||
+        cls.indexOf('big-resume-btn') !== -1 ||
+        cls.indexOf('pause-overlay') !== -1 ||
+        cls.indexOf('feed-skip-btn') !== -1
       )) return true;
       el = el.parentNode;
     }
@@ -138,11 +164,26 @@ var App = (function() {
       });
     }
 
+    // Pause / Break Button
+    if (pauseBtn) {
+      attachTouchOrClick(pauseBtn, function() {
+        pauseApp();
+      });
+    }
+
+    // Resume Button inside Pause Modal
+    if (resumeBtn) {
+      attachTouchOrClick(resumeBtn, function() {
+        resumeApp();
+      });
+    }
+
     // Theme Pills
     var themePills = document.querySelectorAll('.theme-pill');
     for (var t = 0; t < themePills.length; t++) {
       (function(pill) {
         attachTouchOrClick(pill, function() {
+          if (isPaused) return;
           var theme = pill.getAttribute('data-theme');
           setTheme(theme);
         });
@@ -152,16 +193,19 @@ var App = (function() {
     // Mode Buttons
     if (modeExploreBtn) {
       attachTouchOrClick(modeExploreBtn, function() {
+        if (isPaused) return;
         setMode('explore');
       });
     }
     if (modeFindBtn) {
       attachTouchOrClick(modeFindBtn, function() {
+        if (isPaused) return;
         setMode('find');
       });
     }
     if (modeBubblesBtn) {
       attachTouchOrClick(modeBubblesBtn, function() {
+        if (isPaused) return;
         setMode('bubbles');
       });
     }
@@ -180,6 +224,7 @@ var App = (function() {
     for (var f = 0; f < flowers.length; f++) {
       (function(idx) {
         attachTouchOrClick(flowers[idx], function(e) {
+          if (isPaused) return;
           triggerFlower(flowers[idx], flowerNotes[idx % flowerNotes.length], e);
         });
       })(f);
@@ -188,6 +233,7 @@ var App = (function() {
     // Repeat Prompt Banner
     if (promptBannerEl) {
       attachTouchOrClick(promptBannerEl, function() {
+        if (isPaused) return;
         repeatPrompt();
       });
     }
@@ -195,9 +241,8 @@ var App = (function() {
     // ==========================================
     // BUBBLE POPPING (ZERO-LATENCY TOUCH & CLICK)
     // ==========================================
-    var lastBubblePopTime = 0;
-
     function popBubbleAt(clientX, clientY) {
+      if (isPaused) return false;
       if (typeof clientX !== 'number' || typeof clientY !== 'number') return false;
       var hitBubble = ParticleSystem.checkBubbleTap(clientX, clientY);
       if (hitBubble) {
@@ -227,10 +272,9 @@ var App = (function() {
 
     var appContainer = document.getElementById('app-container');
     if (appContainer) {
-      // Instant Touchstart for iPad (zero delay on finger touch!)
       appContainer.addEventListener('touchstart', function(e) {
-        if (currentMode !== 'bubbles') return;
-        if (isUiControlTap(e.target)) return; // Allow button touches to work cleanly!
+        if (currentMode !== 'bubbles' || isPaused) return;
+        if (isUiControlTap(e.target)) return;
 
         var touches = e.changedTouches || e.touches;
         if (!touches || touches.length === 0) return;
@@ -244,11 +288,10 @@ var App = (function() {
         }
       }, false);
 
-      // Touchend fallback in case touchstart was missed
       appContainer.addEventListener('touchend', function(e) {
-        if (currentMode !== 'bubbles') return;
+        if (currentMode !== 'bubbles' || isPaused) return;
         if (isUiControlTap(e.target)) return;
-        if (Date.now() - lastBubblePopTime < 350) return; // Already popped on touchstart!
+        if (Date.now() - lastBubblePopTime < 350) return;
 
         var touches = e.changedTouches || e.touches;
         if (!touches || touches.length === 0) return;
@@ -260,19 +303,104 @@ var App = (function() {
         }
       }, false);
 
-      // Click event for Mac desktop mouse clicks
       appContainer.addEventListener('click', function(e) {
-        if (currentMode !== 'bubbles') return;
+        if (currentMode !== 'bubbles' || isPaused) return;
         if (isUiControlTap(e.target)) return;
-        if (Date.now() - lastBubblePopTime < 400) return; // Prevent double trigger from simulated clicks
+        if (Date.now() - lastBubblePopTime < 400) return;
         popBubbleAt(e.clientX, e.clientY);
       }, false);
     }
   }
 
   // ==========================================
-  // THEME SWITCHING & RENDERING
+  // PAUSE & RESUME LOGIC (涨停/休息功能)
   // ==========================================
+  function pauseApp() {
+    if (isPaused) return;
+    isPaused = true;
+
+    clearFeedingTimers();
+    clearSongPlayingStates();
+
+    // 1. Halt all audio sources immediately
+    try {
+      AudioEngine.stopAll();
+      AudioEngine.playClip('pause_take_break');
+    } catch (e) {}
+
+    // 2. Halt animation loops and bubble timers
+    try {
+      ParticleSystem.stopLoop();
+    } catch (e) {}
+
+    if (bubbleSpawnTimer) {
+      clearInterval(bubbleSpawnTimer);
+      bubbleSpawnTimer = null;
+    }
+
+    // 3. Show night-sky break modal
+    if (pauseModalEl) {
+      pauseModalEl.classList.remove('hidden');
+    }
+  }
+
+  function resumeApp() {
+    if (!isPaused) return;
+    isPaused = false;
+
+    // 1. Hide break modal
+    if (pauseModalEl) {
+      pauseModalEl.classList.add('hidden');
+    }
+
+    // 2. Resume particle loops
+    try {
+      ParticleSystem.startLoop();
+      AudioEngine.playClip('pause_resume');
+      AudioEngine.playChime(783.99);
+    } catch (e) {}
+
+    // 3. Resume mode-specific timers & prompts
+    if (currentMode === 'bubbles') {
+      spawnNextBubble();
+      bubbleSpawnTimer = setInterval(function() {
+        if (currentMode === 'bubbles' && !isPaused) {
+          spawnNextBubble();
+        }
+      }, 1100);
+    } else if (currentMode === 'find') {
+      setTimeout(playTargetPrompt, 500);
+    } else if (currentTheme === 'feed') {
+      setTimeout(repeatPrompt, 500);
+    }
+  }
+
+  // ==========================================
+  // THEME SWITCHING & RENDERING (ZERO-LAG OPTIMIZED)
+  // ==========================================
+  function clearSongPlayingStates() {
+    var allCards = document.querySelectorAll('.song-card');
+    for (var i = 0; i < allCards.length; i++) {
+      allCards[i].classList.remove('playing');
+    }
+  }
+
+  function clearFeedingTimers() {
+    if (feedPromptTimer) {
+      clearTimeout(feedPromptTimer);
+      feedPromptTimer = null;
+    }
+    if (feedChewTimer) {
+      clearTimeout(feedChewTimer);
+      feedChewTimer = null;
+    }
+    if (feedAdvanceTimer) {
+      clearTimeout(feedAdvanceTimer);
+      feedAdvanceTimer = null;
+    }
+    isFeeding = false;
+  }
+
   function updateThemePills(theme) {
     var pills = document.querySelectorAll('.theme-pill');
     for (var i = 0; i < pills.length; i++) {
@@ -285,14 +413,25 @@ var App = (function() {
   }
 
   function setTheme(theme) {
+    if (theme === currentTheme && currentMode === 'explore') return;
+
+    // 1. Immediately silence any active speech, songs, and clear timers
+    try {
+      AudioEngine.stopAll();
+    } catch (e) {}
+
+    clearFeedingTimers();
+    clearSongPlayingStates();
+
     currentTheme = theme;
     targetItem = null;
     updateThemePills(theme);
+
     try {
       AudioEngine.playChime(783.99);
     } catch (e) {}
 
-    // If user selects any theme pill while in bubbles mode, seamlessly exit bubbles and open that theme!
+    // Exit bubbles mode cleanly if selecting theme
     if (currentMode === 'bubbles') {
       setMode('explore');
       return;
@@ -325,28 +464,28 @@ var App = (function() {
 
     if (currentTheme === 'animals') {
       renderStandardGrid(ContentData.animals, '🦁');
-      showPrompt("Tap the animals to explore!", "🦁");
+      showPrompt("Tap the animals to explore! (12 Animals)", "🦁");
     } else if (currentTheme === 'fruits') {
       renderStandardGrid(ContentData.fruits, '🍎');
-      showPrompt("Yummy fruits and food! Tap to taste!", "🍎");
+      showPrompt("Yummy fruits and food! Tap to taste! (12 Foods)", "🍎");
     } else if (currentTheme === 'vehicles') {
       renderStandardGrid(ContentData.vehicles, '🚗');
-      showPrompt("Things with wheels! Beep beep!", "🚗");
+      showPrompt("Things that go! Beep beep! (8 Vehicles)", "🚗");
     } else if (currentTheme === 'colors') {
       renderColorsGrid();
-      showPrompt("Rainbow colors! Tap to splash!", "🎨");
+      showPrompt("Rainbow colors! Tap to splash! (10 Colors)", "🎨");
     } else if (currentTheme === 'feed') {
       renderFeedingStage();
-      showPrompt("Feed the hungry animal friends!", "🍼");
-      AudioEngine.playClip('feed_prompt');
+      showPrompt("Feed the hungry animal friends! (8 Animals)", "🍼");
     } else if (currentTheme === 'songs') {
       renderSongsGrid();
-      showPrompt("Sing along to classic nursery rhymes!", "🎵");
+      showPrompt("Sing along to classic nursery rhymes! (6 Songs)", "🎵");
     }
   }
 
   // Render Standard Card Grid (Animals, Fruits, Vehicles)
   function renderStandardGrid(items, defaultEmoji) {
+    var frag = document.createDocumentFragment();
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
       tapCounters[item.id] = 0;
@@ -365,17 +504,20 @@ var App = (function() {
 
       attachTouchOrClick(pod, (function(obj) {
         return function(e) {
+          if (isPaused) return;
           handleItemTap(obj, e);
         };
       })(item));
 
-      playgroundEl.appendChild(pod);
+      frag.appendChild(pod);
     }
+    playgroundEl.appendChild(frag);
   }
 
   // Render Colors Grid
   function renderColorsGrid() {
     var colors = ContentData.colors;
+    var frag = document.createDocumentFragment();
     for (var i = 0; i < colors.length; i++) {
       var c = colors[i];
       var pod = document.createElement('div');
@@ -390,70 +532,133 @@ var App = (function() {
 
       attachTouchOrClick(pod, (function(colorItem) {
         return function(e) {
+          if (isPaused) return;
           handleColorTap(colorItem, e);
         };
       })(c));
 
-      playgroundEl.appendChild(pod);
+      frag.appendChild(pod);
     }
+    playgroundEl.appendChild(frag);
   }
 
-  // Render Feeding Mini-Game
-  var currentFeedingIndex = 0;
-  var isFeeding = false;
-  var hungryAnimals = [
-    { id: 'monkey', name: 'Milo', askClip: 'feed_monkey_ask', targetFood: 'banana', prompt: 'Milo wants a banana! 🍌', emoji: '🐒' },
-    { id: 'bear', name: 'Barnaby', askClip: 'feed_bear_ask', targetFood: 'honey', prompt: 'Barnaby wants sweet honey! 🍯', emoji: '🐻' },
-    { id: 'rabbit', name: 'Bunny', askClip: 'feed_rabbit_ask', targetFood: 'carrot', prompt: 'Bunny wants a carrot! 🥕', emoji: '🐰' }
-  ];
-
+  // ==========================================
+  // EXPANDED FEEDING MINI-GAME (8 Animals & Dynamic Food Basket)
+  // ==========================================
   function renderFeedingStage() {
     if (!playgroundEl) return;
-    playgroundEl.innerHTML = ''; // CRITICAL: Clear previous stage content!
+    playgroundEl.innerHTML = '';
 
-    isFeeding = false;
-    currentFeedingAnimal = hungryAnimals[currentFeedingIndex % hungryAnimals.length];
+    clearFeedingTimers();
+
+    var friends = ContentData.feedFriends;
+    var allFoods = ContentData.allFoods;
+    currentFeedingAnimal = friends[currentFeedingIndex % friends.length];
+
+    // Find the target food object
+    var targetFoodObj = null;
+    for (var f = 0; f < allFoods.length; f++) {
+      if (allFoods[f].id === currentFeedingAnimal.targetFood) {
+        targetFoodObj = allFoods[f];
+        break;
+      }
+    }
+    if (!targetFoodObj) {
+      targetFoodObj = { id: currentFeedingAnimal.targetFood, name: 'Food', emoji: '🍎' };
+    }
+
+    // Pick 3 random distractor foods from the basket
+    var distractorPool = [];
+    for (var d = 0; d < allFoods.length; d++) {
+      if (allFoods[d].id !== currentFeedingAnimal.targetFood) {
+        distractorPool.push(allFoods[d]);
+      }
+    }
+    for (var j = distractorPool.length - 1; j > 0; j--) {
+      var rk = Math.floor(Math.random() * (j + 1));
+      var tmpD = distractorPool[j];
+      distractorPool[j] = distractorPool[rk];
+      distractorPool[rk] = tmpD;
+    }
+
+    // 4 choices = 1 target + 3 distractors
+    var trayChoices = [targetFoodObj];
+    for (var p = 0; p < Math.min(3, distractorPool.length); p++) {
+      trayChoices.push(distractorPool[p]);
+    }
+    for (var s = trayChoices.length - 1; s > 0; s--) {
+      var randIdx = Math.floor(Math.random() * (s + 1));
+      var tempChoice = trayChoices[s];
+      trayChoices[s] = trayChoices[randIdx];
+      trayChoices[randIdx] = tempChoice;
+    }
 
     var stage = document.createElement('div');
     stage.className = 'feeding-stage';
 
-    stage.innerHTML = (
-      '<div id="hungry-box" class="hungry-character-box">' +
-        '<span style="font-size: 80px;">' + currentFeedingAnimal.emoji + '</span>' +
-      '</div>' +
-      '<div class="prompt-banner" style="position:static; transform:none; margin: 10px 0;">' +
-        '<span>' + currentFeedingAnimal.prompt + '</span>' +
-      '</div>' +
-      '<div class="food-tray">' +
-        '<div class="food-item" data-food="banana">' +
-          '<span class="food-item-icon">🍌</span>' +
-          '<span class="food-item-name">Banana</span>' +
-        '</div>' +
-        '<div class="food-item" data-food="honey">' +
-          '<span class="food-item-icon">🍯</span>' +
-          '<span class="food-item-name">Honey</span>' +
-        '</div>' +
-        '<div class="food-item" data-food="carrot">' +
-          '<span class="food-item-icon">🥕</span>' +
-          '<span class="food-item-name">Carrot</span>' +
-        '</div>' +
+    var currentProgressText = (currentFeedingIndex % friends.length + 1) + ' / ' + friends.length;
+
+    var headerBar = (
+      '<div class="feeding-header-bar">' +
+        '<span class="feed-progress-pill">🐾 ' + currentFeedingAnimal.name + ' (' + currentProgressText + ')</span>' +
+        '<button id="feed-skip-btn" class="feed-skip-btn" type="button">' +
+          '<span>Next Friend ➡️</span>' +
+        '</button>' +
       '</div>'
     );
 
+    var hungryBoxHtml = (
+      '<div id="hungry-box" class="hungry-character-box">' +
+        '<span style="font-size: 80px;">' + currentFeedingAnimal.emoji + '</span>' +
+      '</div>'
+    );
+
+    var promptHtml = (
+      '<div class="prompt-banner" style="position:static; transform:none; margin: 8px 0;">' +
+        '<span>' + currentFeedingAnimal.prompt + '</span>' +
+      '</div>'
+    );
+
+    var trayHtml = '<div class="food-tray-v3">';
+    for (var c = 0; c < trayChoices.length; c++) {
+      var item = trayChoices[c];
+      trayHtml += (
+        '<div class="food-item-v3" data-food="' + item.id + '">' +
+          '<span class="food-item-icon-v3">' + item.emoji + '</span>' +
+          '<span class="food-item-name-v3">' + item.name + '</span>' +
+        '</div>'
+      );
+    }
+    trayHtml += '</div>';
+
+    stage.innerHTML = headerBar + hungryBoxHtml + promptHtml + trayHtml;
     playgroundEl.appendChild(stage);
 
-    // Audio hint
-    setTimeout(function() {
-      if (currentFeedingAnimal && currentFeedingAnimal.askClip) {
+    // Prompt the child with the animal's ask voice after 250ms (never overlaps with chime or theme sounds)
+    feedPromptTimer = setTimeout(function() {
+      if (currentTheme === 'feed' && currentFeedingAnimal && currentFeedingAnimal.askClip && !isPaused) {
         AudioEngine.playClip(currentFeedingAnimal.askClip);
       }
-    }, 350);
+    }, 250);
+
+    // Skip / Next Friend button handler
+    var skipBtn = document.getElementById('feed-skip-btn');
+    if (skipBtn) {
+      attachTouchOrClick(skipBtn, function() {
+        if (isPaused) return;
+        clearFeedingTimers();
+        currentFeedingIndex = (currentFeedingIndex + 1) % friends.length;
+        AudioEngine.playChime(659.25);
+        renderFeedingStage();
+      });
+    }
 
     // Attach food item handlers
-    var foodButtons = stage.querySelectorAll('.food-item');
+    var foodButtons = stage.querySelectorAll('.food-item-v3');
     for (var i = 0; i < foodButtons.length; i++) {
       (function(btn) {
         attachTouchOrClick(btn, function(e) {
+          if (isPaused) return;
           var chosen = btn.getAttribute('data-food');
           handleFoodFeed(chosen, btn);
         });
@@ -462,38 +667,44 @@ var App = (function() {
   }
 
   function handleFoodFeed(foodName, btn) {
-    if (!currentFeedingAnimal || isFeeding) return;
+    if (!currentFeedingAnimal || isFeeding || isPaused) return;
     var rect = btn.getBoundingClientRect();
-    ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 14);
+    ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 16);
 
     var hungryBox = document.getElementById('hungry-box');
 
     if (foodName === currentFeedingAnimal.targetFood) {
-      // SUCCESS: Animal eats food!
+      // SUCCESS: Animal eats food happily!
       isFeeding = true;
       if (hungryBox) hungryBox.classList.add('chewing');
       AudioEngine.playFanfare();
       AudioEngine.playClip('feed_yum');
       addStar(3);
 
-      // AUTOMATIC PROGRESSION: guaranteed advance to next animal after chewing
-      setTimeout(function() {
+      feedChewTimer = setTimeout(function() {
         if (hungryBox) hungryBox.classList.remove('chewing');
         AudioEngine.playClip('praise_great');
 
-        setTimeout(function() {
-          currentFeedingIndex = (currentFeedingIndex + 1) % hungryAnimals.length;
-          renderFeedingStage(); // Flip to next hungry animal!
+        feedAdvanceTimer = setTimeout(function() {
+          if (currentTheme === 'feed') {
+            currentFeedingIndex = (currentFeedingIndex + 1) % ContentData.feedFriends.length;
+            renderFeedingStage(); // Flip to next hungry animal!
+          }
         }, 900);
       }, 1500);
     } else {
-      // Gentle friendly hint
+      // Friendly, encouraging hint
+      btn.classList.remove('wrong-shake');
+      void btn.offsetWidth;
+      btn.classList.add('wrong-shake');
       AudioEngine.playBoing();
       AudioEngine.playClip(currentFeedingAnimal.askClip);
     }
   }
 
-  // Render Nursery Rhymes Jukebox
+  // ==========================================
+  // SONGS JUKEBOX GRID (6 Authentic Vocal Songs)
+  // ==========================================
   function renderSongsGrid() {
     var songs = ContentData.songs;
     var grid = document.createElement('div');
@@ -513,6 +724,7 @@ var App = (function() {
 
       attachTouchOrClick(card, (function(s, cardEl) {
         return function() {
+          if (isPaused) return;
           handleSongPlay(s, cardEl);
         };
       })(song, card));
@@ -524,10 +736,18 @@ var App = (function() {
   }
 
   function handleSongPlay(song, cardEl) {
-    var allCards = document.querySelectorAll('.song-card');
-    for (var i = 0; i < allCards.length; i++) {
-      allCards[i].classList.remove('playing');
+    var isAlreadyPlaying = cardEl.classList.contains('playing');
+
+    // Toggle behavior: if already playing, pause/stop it!
+    if (isAlreadyPlaying) {
+      AudioEngine.stopAll();
+      cardEl.classList.remove('playing');
+      return;
     }
+
+    // Stop any other playing song
+    AudioEngine.stopAll();
+    clearSongPlayingStates();
 
     cardEl.classList.add('playing');
     var rect = cardEl.getBoundingClientRect();
@@ -536,7 +756,6 @@ var App = (function() {
     showPrompt(song.title, song.icon);
     AudioEngine.playSparkle();
 
-    // Play melody notes synthesized then neural sung phrase
     AudioEngine.playClip(song.phraseKey, function() {
       cardEl.classList.remove('playing');
     });
@@ -555,28 +774,22 @@ var App = (function() {
 
     ParticleSystem.burst(cx, cy, 14);
 
-    if (currentMode === 'find') {
-      handleFindModeTap(item, pod, cx, cy);
-    } else {
-      // Explore Mode
-      tapCounters[item.id] = (tapCounters[item.id] || 0) + 1;
-      var count = tapCounters[item.id];
+    tapCounters[item.id] = (tapCounters[item.id] || 0) + 1;
+    var count = tapCounters[item.id];
 
-      if (pod) {
-        pod.classList.remove('anim-jump', 'anim-wobble');
-        void pod.offsetWidth;
-        pod.classList.add(count % 2 === 1 ? 'anim-jump' : 'anim-wobble');
-      }
-
-      showSpeech(item.id, item.name + "! " + (item.tagline || ''));
-
-      // Play Phrase with gentle neural voice
-      if (item.phraseKey) {
-        AudioEngine.playClip(item.phraseKey);
-      }
-      AudioEngine.playChime(659.25);
-      addStar(1);
+    if (pod) {
+      pod.classList.remove('anim-jump', 'anim-wobble');
+      void pod.offsetWidth;
+      pod.classList.add(count % 2 === 1 ? 'anim-jump' : 'anim-wobble');
     }
+
+    showSpeech(item.id, item.name + "! " + (item.tagline || ''));
+
+    if (item.phraseKey) {
+      AudioEngine.playClip(item.phraseKey);
+    }
+    AudioEngine.playChime(659.25);
+    addStar(1);
   }
 
   function handleColorTap(colorItem, event) {
@@ -607,8 +820,6 @@ var App = (function() {
   // ==========================================
   // DEDICATED FIND GAME STAGE
   // ==========================================
-  var isFindTransitioning = false;
-
   function renderFindStage() {
     if (!playgroundEl) return;
     playgroundEl.innerHTML = '';
@@ -616,21 +827,18 @@ var App = (function() {
     var items = getCurrentThemeItems();
     if (!items || items.length === 0) return;
 
-    // Pick target (avoid repeating immediate same item)
     var next;
     do {
       next = items[Math.floor(Math.random() * items.length)];
     } while (items.length > 1 && targetItem && next.id === targetItem.id);
     targetItem = next;
 
-    // Pick 3 distractors from the current theme
     var pool = [];
     for (var i = 0; i < items.length; i++) {
       if (items[i].id !== targetItem.id) {
         pool.push(items[i]);
       }
     }
-    // Shuffle pool
     for (var j = pool.length - 1; j > 0; j--) {
       var k = Math.floor(Math.random() * (j + 1));
       var tmp = pool[j];
@@ -641,7 +849,6 @@ var App = (function() {
     for (var p = 0; p < Math.min(3, pool.length); p++) {
       options.push(pool[p]);
     }
-    // Shuffle options array
     for (var s = options.length - 1; s > 0; s--) {
       var r = Math.floor(Math.random() * (s + 1));
       var t = options[s];
@@ -693,6 +900,7 @@ var App = (function() {
 
       attachTouchOrClick(card, (function(optItem, cardEl) {
         return function(e) {
+          if (isPaused) return;
           handleFindOptionTap(optItem, cardEl, e);
         };
       })(opt, card));
@@ -707,6 +915,7 @@ var App = (function() {
     if (replayBtn) {
       attachTouchOrClick(replayBtn, function(e) {
         if (e && e.stopPropagation) e.stopPropagation();
+        if (isPaused) return;
         playTargetPrompt();
       });
     }
@@ -721,14 +930,13 @@ var App = (function() {
 
     showPrompt("Can you find the " + targetItem.name + "?", targetItem.bubbleEmoji);
 
-    // Audio hint after short delay
     setTimeout(function() {
-      playTargetPrompt();
+      if (!isPaused) playTargetPrompt();
     }, 280);
   }
 
   function playTargetPrompt() {
-    if (!targetItem) return;
+    if (!targetItem || isPaused) return;
     if (targetItem.promptKey) {
       AudioEngine.playClip(targetItem.promptKey);
     } else if (targetItem.phraseKey) {
@@ -737,14 +945,13 @@ var App = (function() {
   }
 
   function handleFindOptionTap(item, cardEl, e) {
-    if (isFindTransitioning || !targetItem) return;
+    if (isFindTransitioning || !targetItem || isPaused) return;
 
     var rect = cardEl.getBoundingClientRect();
     var cx = rect.left + rect.width / 2;
     var cy = rect.top + rect.height / 2;
 
     if (item.id === targetItem.id) {
-      // SUCCESS: Toddler found the item!
       isFindTransitioning = true;
       cardEl.classList.add('correct-celebrate');
       ParticleSystem.burst(cx, cy, 26);
@@ -758,12 +965,11 @@ var App = (function() {
         AudioEngine.playClip(praiseClip, function() {
           setTimeout(function() {
             isFindTransitioning = false;
-            renderFindStage(); // Advance to next fun question
+            renderFindStage();
           }, 600);
         });
       }, 350);
     } else {
-      // Friendly, non-punitive guidance
       cardEl.classList.remove('wrong-wobble');
       void cardEl.offsetWidth;
       cardEl.classList.add('wrong-wobble');
@@ -783,8 +989,6 @@ var App = (function() {
   // ==========================================
   // DEDICATED BUBBLES POP STAGE
   // ==========================================
-  var bubblePopCount = 0;
-
   function renderBubblesStage() {
     if (!playgroundEl) return;
     playgroundEl.innerHTML = '';
@@ -817,7 +1021,6 @@ var App = (function() {
 
     showPrompt("Pop the bubbles! Pop pop pop!", "🫧");
 
-    // Spawn 4 immediate bubbles at varying heights
     var viewHeight = window.innerHeight || 600;
     spawnNextBubble(viewHeight * 0.75);
     spawnNextBubble(viewHeight * 0.50);
@@ -825,14 +1028,14 @@ var App = (function() {
     spawnNextBubble(viewHeight * 0.15);
 
     bubbleSpawnTimer = setInterval(function() {
-      if (currentMode === 'bubbles') {
+      if (currentMode === 'bubbles' && !isPaused) {
         spawnNextBubble();
       }
     }, 1100);
   }
 
   function spawnNextBubble(startY) {
-    if (currentMode !== 'bubbles') return;
+    if (currentMode !== 'bubbles' || isPaused) return;
     var list = getCurrentThemeItems();
     if (!list || list.length === 0) return;
     var randomObj = list[Math.floor(Math.random() * list.length)];
@@ -887,7 +1090,6 @@ var App = (function() {
       }
     } catch (err) {
       console.error('Mode switch caught error:', err);
-      // Fallback: Always guarantee stage renders
       if (mode === 'explore') renderCurrentTheme();
       else if (mode === 'find') renderFindStage();
       else if (mode === 'bubbles') renderBubblesStage();
@@ -932,6 +1134,7 @@ var App = (function() {
   }
 
   function triggerSun(e) {
+    if (isPaused) return;
     var sun = document.getElementById('sun-item');
     if (sun) {
       var rect = sun.getBoundingClientRect();
@@ -943,12 +1146,14 @@ var App = (function() {
   }
 
   function triggerCloud() {
+    if (isPaused) return;
     AudioEngine.playBoing();
     AudioEngine.playClip('cloud');
     addStar(1);
   }
 
   function triggerFlower(element, noteFreq, event) {
+    if (isPaused) return;
     var rect = element.getBoundingClientRect();
     ParticleSystem.burst(rect.left + rect.width / 2, rect.top + 10, 8);
     AudioEngine.playChime(noteFreq);
@@ -983,9 +1188,13 @@ var App = (function() {
     init: init,
     startApp: startApp,
     setTheme: setTheme,
-    setMode: setMode
+    setMode: setMode,
+    pauseApp: pauseApp,
+    resumeApp: resumeApp
   };
 })();
+
+var AppV3 = App;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', App.init);

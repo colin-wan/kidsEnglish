@@ -175,13 +175,22 @@ var AudioEngine = (function() {
 
   var soundBuffers = {};
   var currentBufferSource = null;
+  var voiceAudio = null;
+  var musicAudio = null;
+  var currentVoiceAudio = null;
+  var currentMusicAudio = null;
 
-  // Pre-load and decode audio buffers for instant zero-latency Web Audio playback
-  function loadBuffer(key, url) {
+  // On-demand audio buffer loading with caching (never floods network with 112 XHRs)
+  function getOrLoadBuffer(key, callback) {
+    if (soundBuffers[key]) {
+      if (typeof callback === 'function') callback(soundBuffers[key]);
+      return;
+    }
+    var url = audioFiles[key];
+    if (!url) return;
+    var ctx = getAudioContext();
+    if (!ctx) return;
     try {
-      var ctx = getAudioContext();
-      if (!ctx) return;
-      
       var xhr = new XMLHttpRequest();
       xhr.open('GET', url, true);
       xhr.responseType = 'arraybuffer';
@@ -189,31 +198,26 @@ var AudioEngine = (function() {
         if (xhr.status === 200 || xhr.status === 0) {
           ctx.decodeAudioData(xhr.response, function(buffer) {
             soundBuffers[key] = buffer;
-          }, function(err) {
-            console.warn('decodeAudioData error for ' + key, err);
-          });
+            if (typeof callback === 'function') callback(buffer);
+          }, function() {});
         }
       };
-      xhr.onerror = function() {};
       xhr.send();
-    } catch (e) {
-      // Safely ignore on local file:// or restricted networks
-    }
+    } catch (e) {}
   }
 
-  // Pre-instantiate audio tags and buffer cache for fast reuse on iOS 12 & Mac
+  // Dedicated lightweight audio tags for iOS 12 Safari (staying within <=3 media element limit)
   function initAudioTags() {
-    for (var key in audioFiles) {
-      if (audioFiles.hasOwnProperty(key)) {
-        try {
-          var a = new Audio();
-          a.src = audioFiles[key];
-          a.preload = 'auto';
-          audioElements[key] = a;
-          loadBuffer(key, audioFiles[key]);
-        } catch (err) {}
+    try {
+      if (!voiceAudio) {
+        voiceAudio = new Audio();
+        voiceAudio.preload = 'none';
       }
-    }
+      if (!musicAudio) {
+        musicAudio = new Audio();
+        musicAudio.preload = 'none';
+      }
+    } catch (err) {}
   }
 
   // Unlock audio on iOS Safari on user gesture
@@ -223,9 +227,8 @@ var AudioEngine = (function() {
     var ctx = getAudioContext();
     if (ctx) {
       if (ctx.state === 'suspended') {
-        ctx.resume();
+        try { ctx.resume(); } catch (e) {}
       }
-      // Play a short silent buffer to unlock iOS 12 webkit audio
       try {
         var buffer = ctx.createBuffer(1, 1, 22050);
         var source = ctx.createBufferSource();
@@ -239,26 +242,118 @@ var AudioEngine = (function() {
 
     initAudioTags();
     isUnlocked = true;
+
+    // Preload only essential small clips (<15KB)
+    getOrLoadBuffer('welcome');
+    getOrLoadBuffer('feed_yum');
   }
 
-  // Play pre-recorded American English audio
+  // Instantly silence all active speech, music, synthesized notes, and buffers
+  function stopAll() {
+    if (currentBufferSource) {
+      try {
+        currentBufferSource.stop(0);
+      } catch (e) {}
+      currentBufferSource = null;
+    }
+    if (voiceAudio) {
+      try {
+        voiceAudio.pause();
+      } catch (e) {}
+    }
+    if (musicAudio) {
+      try {
+        musicAudio.pause();
+      } catch (e) {}
+    }
+    currentVoiceAudio = null;
+    currentMusicAudio = null;
+
+    if ('speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
+    }
+  }
+
+  function pauseAll() {
+    stopAll();
+  }
+
+  // Play pre-recorded American English audio or nursery rhyme
   function playClip(key, onEnded) {
     try {
       unlock();
-      
-      // Stop any ongoing voice audio to prevent overlapping speech
+
+      // Check if this is a nursery rhyme song
+      var isSong = key && key.indexOf('song_') === 0;
+
+      if (isSong) {
+        // Stop any currently playing audio before starting song
+        stopAll();
+
+        var songUrl = audioFiles[key];
+        if (!songUrl) {
+          if (typeof onEnded === 'function') onEnded();
+          return;
+        }
+
+        if (!musicAudio) {
+          musicAudio = new Audio();
+        }
+
+        try {
+          musicAudio.pause();
+          musicAudio.src = songUrl;
+          if (musicAudio.readyState >= 1) {
+            musicAudio.currentTime = 0;
+          }
+        } catch (e) {}
+
+        var songEndedHandler = function() {
+          try {
+            musicAudio.removeEventListener('ended', songEndedHandler);
+          } catch (e) {}
+          if (currentMusicAudio === musicAudio) {
+            currentMusicAudio = null;
+          }
+          if (typeof onEnded === 'function') {
+            onEnded();
+          }
+        };
+
+        try {
+          musicAudio.addEventListener('ended', songEndedHandler);
+        } catch (e) {}
+        currentMusicAudio = musicAudio;
+
+        var playPromise = musicAudio.play();
+        if (playPromise && playPromise.catch) {
+          playPromise.catch(function(err) {
+            console.warn('Music play failed:', err);
+          });
+        }
+        return;
+      }
+
+      // Voice / SFX clip
       if (currentBufferSource) {
         try {
           currentBufferSource.stop(0);
         } catch (e) {}
         currentBufferSource = null;
       }
-      if (currentVoiceAudio) {
+      if (voiceAudio) {
         try {
-          currentVoiceAudio.pause();
-          currentVoiceAudio.currentTime = 0;
-        } catch (err) {}
-        currentVoiceAudio = null;
+          voiceAudio.pause();
+        } catch (e) {}
+      }
+      currentVoiceAudio = null;
+
+      if ('speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch (e) {}
       }
 
       var ctx = getAudioContext();
@@ -286,49 +381,52 @@ var AudioEngine = (function() {
         }
       }
 
-      // 2. Fallback to HTML5 Audio Element
-      var audio = audioElements[key];
-      if (!audio && audioFiles[key]) {
-        try {
-          audio = new Audio(audioFiles[key]);
-          audioElements[key] = audio;
-        } catch (errAudio) {}
-      }
+      // 2. Play via dedicated voiceAudio element
+      var voiceUrl = audioFiles[key];
+      if (voiceUrl) {
+        if (!voiceAudio) {
+          voiceAudio = new Audio();
+        }
 
-      if (audio) {
-        currentVoiceAudio = audio;
         try {
-          audio.currentTime = 0;
+          voiceAudio.pause();
+          voiceAudio.src = voiceUrl;
+          if (voiceAudio.readyState >= 1) {
+            voiceAudio.currentTime = 0;
+          }
         } catch (errTime) {}
-        
-        var endedHandler = function() {
+
+        var voiceEndedHandler = function() {
           try {
-            audio.removeEventListener('ended', endedHandler);
+            voiceAudio.removeEventListener('ended', voiceEndedHandler);
           } catch (e) {}
-          if (currentVoiceAudio === audio) {
+          if (currentVoiceAudio === voiceAudio) {
             currentVoiceAudio = null;
           }
           if (typeof onEnded === 'function') {
             onEnded();
           }
         };
-        try {
-          audio.addEventListener('ended', endedHandler);
-        } catch (e) {}
 
         try {
-          var playPromise = audio.play();
-          if (playPromise && playPromise.catch) {
-            playPromise.catch(function(err) {
-              console.warn('Audio play failed, falling back to speech synthesis:', err);
+          voiceAudio.addEventListener('ended', voiceEndedHandler);
+        } catch (e) {}
+        currentVoiceAudio = voiceAudio;
+
+        try {
+          var p = voiceAudio.play();
+          if (p && p.catch) {
+            p.catch(function(err) {
               fallbackSpeech(key, onEnded);
             });
           }
         } catch (errPlay) {
           fallbackSpeech(key, onEnded);
         }
+
+        // Cache buffer lazily for next time
+        getOrLoadBuffer(key);
       } else {
-        // 3. Fallback to SpeechSynthesis
         fallbackSpeech(key, onEnded);
       }
     } catch (outerErr) {
@@ -624,26 +722,6 @@ var AudioEngine = (function() {
     } catch (e) {}
   }
 
-  // Pause and silence all ongoing audio
-  function pauseAll() {
-    if (currentBufferSource) {
-      try {
-        currentBufferSource.stop(0);
-      } catch (e) {}
-      currentBufferSource = null;
-    }
-    if (currentVoiceAudio) {
-      try {
-        currentVoiceAudio.pause();
-      } catch (e) {}
-    }
-    if ('speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch (e) {}
-    }
-  }
-
   return {
     unlock: unlock,
     playClip: playClip,
@@ -654,6 +732,7 @@ var AudioEngine = (function() {
     playFanfare: playFanfare,
     playAnimalSFX: playAnimalSFX,
     speak: fallbackSpeech,
-    pauseAll: pauseAll
+    pauseAll: pauseAll,
+    stopAll: stopAll
   };
 })();

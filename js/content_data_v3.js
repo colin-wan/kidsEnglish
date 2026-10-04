@@ -930,3 +930,6 @@ var ContentDataV3 = {
     { id: 'cheese', name: 'Cheese', emoji: '🧀' }
   ]
 };
+
+// Cross-compatible alias
+var ContentData = ContentDataV3;

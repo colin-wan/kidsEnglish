@@ -1,13 +1,14 @@
 /**
- * Toddler Safari v3.0 (Test Version Logic)
- * Multi-Theme English Enlightenment for Toddlers (2-3 yo) & iOS 12.5.8 Safari iPad
- * - 12 Animals, 12 Foods, 8 Vehicles, 10 Colors, 6 Songs
- * - Expanded Feed Friends mini-game with 8 Hungry Animals & 12 Dynamic Foods
+ * Toddler Safari - Multi-Theme Enlightenment Logic
+ * Designed for Toddlers (2-3 yo) & iOS 12.5.8 Safari iPad
+ * - Standard American English pronunciation
+ * - Multi-Themes: Animals, Yummy Food, Vehicles, Colors, Feed Friends, Sing Songs
+ * - Zero-lag, ultra-responsive theme switching between Feed and Sing
  * - Dedicated Top Bar Pause & Night-sky Sleep Mode
- * - Strict iOS 12 WebKit 605 compatibility (no ?., no ??)
+ * - No ES2020 syntax (no ?., no ??)
  */
 
-var AppV3 = (function() {
+var App = (function() {
   var currentTheme = 'animals'; // 'animals' | 'fruits' | 'vehicles' | 'colors' | 'feed' | 'songs'
   var currentMode = 'explore';  // 'explore' | 'find' | 'bubbles'
   var stars = 0;
@@ -17,10 +18,13 @@ var AppV3 = (function() {
   var speechTimeout = null;
   var isPaused = false;
 
-  // Feeding mini-game state
+  // Feeding mini-game state & timers
   var currentFeedingIndex = 0;
   var isFeeding = false;
   var currentFeedingAnimal = null;
+  var feedPromptTimer = null;
+  var feedChewTimer = null;
+  var feedAdvanceTimer = null;
 
   // Find mini-game state
   var isFindTransitioning = false;
@@ -114,7 +118,7 @@ var AppV3 = (function() {
     }, false);
   }
 
-  // Reliable detection of UI interactive controls (buttons, pills, nav, scenery)
+  // Reliable detection of UI interactive controls
   function isUiControlTap(target) {
     if (!target) return false;
     var el = target.nodeType === 3 ? target.parentNode : target;
@@ -315,9 +319,12 @@ var AppV3 = (function() {
     if (isPaused) return;
     isPaused = true;
 
+    clearFeedingTimers();
+    clearSongPlayingStates();
+
     // 1. Halt all audio sources immediately
     try {
-      AudioEngine.pauseAll();
+      AudioEngine.stopAll();
       AudioEngine.playClip('pause_take_break');
     } catch (e) {}
 
@@ -369,8 +376,31 @@ var AppV3 = (function() {
   }
 
   // ==========================================
-  // THEME SWITCHING & RENDERING
+  // THEME SWITCHING & RENDERING (ZERO-LAG OPTIMIZED)
   // ==========================================
+  function clearSongPlayingStates() {
+    var allCards = document.querySelectorAll('.song-card');
+    for (var i = 0; i < allCards.length; i++) {
+      allCards[i].classList.remove('playing');
+    }
+  }
+
+  function clearFeedingTimers() {
+    if (feedPromptTimer) {
+      clearTimeout(feedPromptTimer);
+      feedPromptTimer = null;
+    }
+    if (feedChewTimer) {
+      clearTimeout(feedChewTimer);
+      feedChewTimer = null;
+    }
+    if (feedAdvanceTimer) {
+      clearTimeout(feedAdvanceTimer);
+      feedAdvanceTimer = null;
+    }
+    isFeeding = false;
+  }
+
   function updateThemePills(theme) {
     var pills = document.querySelectorAll('.theme-pill');
     for (var i = 0; i < pills.length; i++) {
@@ -383,9 +413,20 @@ var AppV3 = (function() {
   }
 
   function setTheme(theme) {
+    if (theme === currentTheme && currentMode === 'explore') return;
+
+    // 1. Immediately silence any active speech, songs, and clear timers
+    try {
+      AudioEngine.stopAll();
+    } catch (e) {}
+
+    clearFeedingTimers();
+    clearSongPlayingStates();
+
     currentTheme = theme;
     targetItem = null;
     updateThemePills(theme);
+
     try {
       AudioEngine.playChime(783.99);
     } catch (e) {}
@@ -422,13 +463,13 @@ var AppV3 = (function() {
     playgroundEl.innerHTML = '';
 
     if (currentTheme === 'animals') {
-      renderStandardGrid(ContentDataV3.animals, '🦁');
+      renderStandardGrid(ContentData.animals, '🦁');
       showPrompt("Tap the animals to explore! (12 Animals)", "🦁");
     } else if (currentTheme === 'fruits') {
-      renderStandardGrid(ContentDataV3.fruits, '🍎');
+      renderStandardGrid(ContentData.fruits, '🍎');
       showPrompt("Yummy fruits and food! Tap to taste! (12 Foods)", "🍎");
     } else if (currentTheme === 'vehicles') {
-      renderStandardGrid(ContentDataV3.vehicles, '🚗');
+      renderStandardGrid(ContentData.vehicles, '🚗');
       showPrompt("Things that go! Beep beep! (8 Vehicles)", "🚗");
     } else if (currentTheme === 'colors') {
       renderColorsGrid();
@@ -436,7 +477,6 @@ var AppV3 = (function() {
     } else if (currentTheme === 'feed') {
       renderFeedingStage();
       showPrompt("Feed the hungry animal friends! (8 Animals)", "🍼");
-      AudioEngine.playClip('feed_prompt');
     } else if (currentTheme === 'songs') {
       renderSongsGrid();
       showPrompt("Sing along to classic nursery rhymes! (6 Songs)", "🎵");
@@ -445,6 +485,7 @@ var AppV3 = (function() {
 
   // Render Standard Card Grid (Animals, Fruits, Vehicles)
   function renderStandardGrid(items, defaultEmoji) {
+    var frag = document.createDocumentFragment();
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
       tapCounters[item.id] = 0;
@@ -468,13 +509,15 @@ var AppV3 = (function() {
         };
       })(item));
 
-      playgroundEl.appendChild(pod);
+      frag.appendChild(pod);
     }
+    playgroundEl.appendChild(frag);
   }
 
   // Render Colors Grid
   function renderColorsGrid() {
-    var colors = ContentDataV3.colors;
+    var colors = ContentData.colors;
+    var frag = document.createDocumentFragment();
     for (var i = 0; i < colors.length; i++) {
       var c = colors[i];
       var pod = document.createElement('div');
@@ -494,8 +537,9 @@ var AppV3 = (function() {
         };
       })(c));
 
-      playgroundEl.appendChild(pod);
+      frag.appendChild(pod);
     }
+    playgroundEl.appendChild(frag);
   }
 
   // ==========================================
@@ -505,9 +549,10 @@ var AppV3 = (function() {
     if (!playgroundEl) return;
     playgroundEl.innerHTML = '';
 
-    isFeeding = false;
-    var friends = ContentDataV3.feedFriends;
-    var allFoods = ContentDataV3.allFoods;
+    clearFeedingTimers();
+
+    var friends = ContentData.feedFriends;
+    var allFoods = ContentData.allFoods;
     currentFeedingAnimal = friends[currentFeedingIndex % friends.length];
 
     // Find the target food object
@@ -529,7 +574,6 @@ var AppV3 = (function() {
         distractorPool.push(allFoods[d]);
       }
     }
-    // Shuffle distractor pool
     for (var j = distractorPool.length - 1; j > 0; j--) {
       var rk = Math.floor(Math.random() * (j + 1));
       var tmpD = distractorPool[j];
@@ -542,7 +586,6 @@ var AppV3 = (function() {
     for (var p = 0; p < Math.min(3, distractorPool.length); p++) {
       trayChoices.push(distractorPool[p]);
     }
-    // Shuffle the 4 choices
     for (var s = trayChoices.length - 1; s > 0; s--) {
       var randIdx = Math.floor(Math.random() * (s + 1));
       var tempChoice = trayChoices[s];
@@ -591,18 +634,19 @@ var AppV3 = (function() {
     stage.innerHTML = headerBar + hungryBoxHtml + promptHtml + trayHtml;
     playgroundEl.appendChild(stage);
 
-    // Audio hint after short delay
-    setTimeout(function() {
-      if (currentFeedingAnimal && currentFeedingAnimal.askClip && !isPaused) {
+    // Prompt the child with the animal's ask voice after 250ms (never overlaps with chime or theme sounds)
+    feedPromptTimer = setTimeout(function() {
+      if (currentTheme === 'feed' && currentFeedingAnimal && currentFeedingAnimal.askClip && !isPaused) {
         AudioEngine.playClip(currentFeedingAnimal.askClip);
       }
-    }, 350);
+    }, 250);
 
     // Skip / Next Friend button handler
     var skipBtn = document.getElementById('feed-skip-btn');
     if (skipBtn) {
       attachTouchOrClick(skipBtn, function() {
         if (isPaused) return;
+        clearFeedingTimers();
         currentFeedingIndex = (currentFeedingIndex + 1) % friends.length;
         AudioEngine.playChime(659.25);
         renderFeedingStage();
@@ -637,14 +681,15 @@ var AppV3 = (function() {
       AudioEngine.playClip('feed_yum');
       addStar(3);
 
-      // Advance automatically after joyful chewing animation
-      setTimeout(function() {
+      feedChewTimer = setTimeout(function() {
         if (hungryBox) hungryBox.classList.remove('chewing');
         AudioEngine.playClip('praise_great');
 
-        setTimeout(function() {
-          currentFeedingIndex = (currentFeedingIndex + 1) % ContentDataV3.feedFriends.length;
-          renderFeedingStage(); // Flip to next hungry animal!
+        feedAdvanceTimer = setTimeout(function() {
+          if (currentTheme === 'feed') {
+            currentFeedingIndex = (currentFeedingIndex + 1) % ContentData.feedFriends.length;
+            renderFeedingStage(); // Flip to next hungry animal!
+          }
         }, 900);
       }, 1500);
     } else {
@@ -658,10 +703,10 @@ var AppV3 = (function() {
   }
 
   // ==========================================
-  // SONGS JUKEBOX GRID (6 Songs)
+  // SONGS JUKEBOX GRID (6 Authentic Vocal Songs)
   // ==========================================
   function renderSongsGrid() {
-    var songs = ContentDataV3.songs;
+    var songs = ContentData.songs;
     var grid = document.createElement('div');
     grid.className = 'songs-grid';
 
@@ -691,10 +736,18 @@ var AppV3 = (function() {
   }
 
   function handleSongPlay(song, cardEl) {
-    var allCards = document.querySelectorAll('.song-card');
-    for (var i = 0; i < allCards.length; i++) {
-      allCards[i].classList.remove('playing');
+    var isAlreadyPlaying = cardEl.classList.contains('playing');
+
+    // Toggle behavior: if already playing, pause/stop it!
+    if (isAlreadyPlaying) {
+      AudioEngine.stopAll();
+      cardEl.classList.remove('playing');
+      return;
     }
+
+    // Stop any other playing song
+    AudioEngine.stopAll();
+    clearSongPlayingStates();
 
     cardEl.classList.add('playing');
     var rect = cardEl.getBoundingClientRect();
@@ -757,11 +810,11 @@ var AppV3 = (function() {
   }
 
   function getCurrentThemeItems() {
-    if (currentTheme === 'animals') return ContentDataV3.animals;
-    if (currentTheme === 'fruits') return ContentDataV3.fruits;
-    if (currentTheme === 'vehicles') return ContentDataV3.vehicles;
-    if (currentTheme === 'colors') return ContentDataV3.colors;
-    return ContentDataV3.animals;
+    if (currentTheme === 'animals') return ContentData.animals;
+    if (currentTheme === 'fruits') return ContentData.fruits;
+    if (currentTheme === 'vehicles') return ContentData.vehicles;
+    if (currentTheme === 'colors') return ContentData.colors;
+    return ContentData.animals;
   }
 
   // ==========================================
@@ -1141,8 +1194,10 @@ var AppV3 = (function() {
   };
 })();
 
+var AppV3 = App;
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', AppV3.init);
+  document.addEventListener('DOMContentLoaded', App.init);
 } else {
-  AppV3.init();
+  App.init();
 }

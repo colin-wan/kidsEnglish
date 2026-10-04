@@ -19,7 +19,7 @@
   <link rel="manifest" href="manifest.json">
   
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=2.4">
+  <link rel="stylesheet" href="style.css?v=3.0">
 </head>
 <body>
 
@@ -93,6 +93,12 @@
           <span class="mode-btn-icon">🫧</span>
           <span>Bubbles</span>
         </button>
+
+        <!-- ⏸️ Pause / Break Button -->
+        <button id="pause-btn" class="pause-btn" title="Take a break / 休息一下">
+          <span class="pause-btn-icon">⏸️</span>
+          <span>Pause</span>
+        </button>
       </div>
     </header>
 
@@ -100,27 +106,27 @@
     <nav id="theme-nav" class="theme-nav-bar">
       <button class="theme-pill active" data-theme="animals">
         <span class="theme-pill-icon">🦁</span>
-        <span>Animals</span>
+        <span>Animals (12)</span>
       </button>
       <button class="theme-pill" data-theme="fruits">
         <span class="theme-pill-icon">🍎</span>
-        <span>Yummy Food</span>
+        <span>Yummy Food (12)</span>
       </button>
       <button class="theme-pill" data-theme="vehicles">
         <span class="theme-pill-icon">🚗</span>
-        <span>Vehicles</span>
+        <span>Vehicles (8)</span>
       </button>
       <button class="theme-pill" data-theme="colors">
         <span class="theme-pill-icon">🎨</span>
-        <span>Colors</span>
+        <span>Colors (10)</span>
       </button>
       <button class="theme-pill" data-theme="feed">
         <span class="theme-pill-icon">🍼</span>
-        <span>Feed Friends</span>
+        <span>Feed Friends (8)</span>
       </button>
       <button class="theme-pill" data-theme="songs">
         <span class="theme-pill-icon">🎵</span>
-        <span>Sing Songs</span>
+        <span>Sing Songs (6)</span>
       </button>
     </nav>
 
@@ -180,6 +186,25 @@
     <!-- Canvas for Confetti, Stars & Floating Bubbles -->
     <canvas id="particles-canvas"></canvas>
 
+    <!-- 🌙 Peaceful Night-Sky Pause Modal -->
+    <div id="pause-modal" class="pause-overlay hidden">
+      <div class="pause-card">
+        <div class="pause-celestial-box">
+          <span class="pause-moon">🌙</span>
+          <span class="pause-star-1">✨</span>
+          <span class="pause-star-2">⭐</span>
+          <span class="pause-star-3">✨</span>
+        </div>
+        <h2 class="pause-title">Rest & Relax / 休息一下</h2>
+        <p class="pause-message-en">Time for a gentle break! Rest your eyes, take a sip of water, or do a happy stretch.</p>
+        <p class="pause-message-cn">让眼睛休息一下，喝口水，伸个懒腰吧！</p>
+        <button id="resume-btn" class="big-resume-btn" type="button">
+          <span class="resume-btn-icon">▶</span>
+          <span>RESUME / 继续玩</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Splash Screen (Required for iOS 12 Audio Context Unlocking) -->
     <div id="splash-overlay" class="splash-overlay">
       <div class="splash-characters">
@@ -198,11 +223,10 @@
   </div>
 
   <!-- JavaScript Modules (Loaded in order, ES5/ES6 iOS 12 safe) -->
-  <script src="js/audio.js?v=2.4"></script>
-  <script src="js/particles.js?v=2.4"></script>
-  <script src="js/animals.js?v=2.4"></script>
-  <script src="js/content_data.js?v=2.4"></script>
-  <script src="js/app.js?v=2.4"></script>
+  <script src="js/audio.js?v=3.0"></script>
+  <script src="js/particles.js?v=3.0"></script>
+  <script src="js/content_data.js?v=3.0"></script>
+  <script src="js/app.js?v=3.0"></script>
 
 </body>
 </html>
