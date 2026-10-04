@@ -72,6 +72,13 @@ var App = (function() {
     renderCurrentTheme();
     bindEvents();
 
+    // Standalone & Fullscreen Detection for iPad Home Screen
+    try {
+      if (window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
+        document.body.classList.add('ios-standalone');
+      }
+    } catch (eStand) {}
+
     try {
       AudioEngine.preloadTheme('animals');
     } catch (e) {}
@@ -1181,6 +1188,15 @@ var App = (function() {
       AudioEngine.playSparkle();
       AudioEngine.preloadTheme('animals');
     } catch (err) {}
+
+    try {
+      var rootEl = document.documentElement;
+      if (rootEl.requestFullscreen) {
+        rootEl.requestFullscreen().catch(function(){});
+      } else if (rootEl.webkitRequestFullscreen) {
+        rootEl.webkitRequestFullscreen();
+      }
+    } catch (eFull) {}
 
     if (splashOverlayEl) {
       splashOverlayEl.classList.add('fade-out');
