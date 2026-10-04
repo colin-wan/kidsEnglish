@@ -71,6 +71,10 @@ var App = (function() {
 
     renderCurrentTheme();
     bindEvents();
+
+    try {
+      AudioEngine.preloadTheme('animals');
+    } catch (e) {}
   }
 
   // Universal click & touch listener (rock-solid on iPad iOS 12 & Mac)
@@ -80,12 +84,14 @@ var App = (function() {
     var startX = 0;
     var startY = 0;
     var moved = false;
+    var touchHandled = false;
 
     element.addEventListener('touchstart', function(e) {
       if (e.touches && e.touches[0]) {
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
         moved = false;
+        touchHandled = false;
       }
     }, false);
 
@@ -93,7 +99,7 @@ var App = (function() {
       if (e.touches && e.touches[0]) {
         var dx = Math.abs(e.touches[0].clientX - startX);
         var dy = Math.abs(e.touches[0].clientY - startY);
-        if (dx > 12 || dy > 12) {
+        if (dx > 25 || dy > 25) {
           moved = true;
         }
       }
@@ -104,15 +110,20 @@ var App = (function() {
       if (e.cancelable) e.preventDefault();
       if (e.stopPropagation) e.stopPropagation();
       var now = Date.now();
-      if (now - lastTrigger < 250) return;
+      if (now - lastTrigger < 300) return;
       lastTrigger = now;
+      touchHandled = true;
       handler(e);
     }, false);
 
     element.addEventListener('click', function(e) {
       if (e.stopPropagation) e.stopPropagation();
+      if (touchHandled) {
+        touchHandled = false;
+        return;
+      }
       var now = Date.now();
-      if (now - lastTrigger < 250) return;
+      if (now - lastTrigger < 300) return;
       lastTrigger = now;
       handler(e);
     }, false);
@@ -426,6 +437,10 @@ var App = (function() {
     currentTheme = theme;
     targetItem = null;
     updateThemePills(theme);
+
+    try {
+      AudioEngine.preloadTheme(theme);
+    } catch (e) {}
 
     try {
       AudioEngine.playChime(783.99);
@@ -1164,6 +1179,7 @@ var App = (function() {
     try {
       AudioEngine.unlock();
       AudioEngine.playSparkle();
+      AudioEngine.preloadTheme('animals');
     } catch (err) {}
 
     if (splashOverlayEl) {

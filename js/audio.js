@@ -170,26 +170,40 @@ var AudioEngine = (function() {
         audioCtx = new AudioContextClass();
       }
     }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      try {
+        audioCtx.resume();
+      } catch (e) {}
+    }
     return audioCtx;
   }
 
   var soundBuffers = {};
+  var loadingBuffers = {};
   var currentBufferSource = null;
-  var voiceAudio = null;
+  var voicePool = [null, null];
+  var voicePoolIdx = 0;
   var musicAudio = null;
-  var currentVoiceAudio = null;
-  var currentMusicAudio = null;
 
-  // On-demand audio buffer loading with caching (never floods network with 112 XHRs)
+  // On-demand audio buffer loading with callback queueing and deduplication
   function getOrLoadBuffer(key, callback) {
     if (soundBuffers[key]) {
       if (typeof callback === 'function') callback(soundBuffers[key]);
+      return;
+    }
+    if (loadingBuffers[key]) {
+      if (typeof callback === 'function') {
+        loadingBuffers[key].push(callback);
+      }
       return;
     }
     var url = audioFiles[key];
     if (!url) return;
     var ctx = getAudioContext();
     if (!ctx) return;
+
+    loadingBuffers[key] = callback ? [callback] : [];
+
     try {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', url, true);
@@ -198,54 +212,133 @@ var AudioEngine = (function() {
         if (xhr.status === 200 || xhr.status === 0) {
           ctx.decodeAudioData(xhr.response, function(buffer) {
             soundBuffers[key] = buffer;
-            if (typeof callback === 'function') callback(buffer);
-          }, function() {});
+            var cbs = loadingBuffers[key] || [];
+            delete loadingBuffers[key];
+            for (var i = 0; i < cbs.length; i++) {
+              try { cbs[i](buffer); } catch (e) {}
+            }
+          }, function() {
+            delete loadingBuffers[key];
+          });
+        } else {
+          delete loadingBuffers[key];
         }
       };
+      xhr.onerror = function() {
+        delete loadingBuffers[key];
+      };
       xhr.send();
-    } catch (e) {}
+    } catch (e) {
+      delete loadingBuffers[key];
+    }
   }
 
-  // Dedicated lightweight audio tags for iOS 12 Safari (staying within <=3 media element limit)
+  // Preload an array of audio keys sequentially in small batches
+  var themeAudioKeys = {
+    animals: [
+      'welcome', 'lion_phrase', 'elephant_phrase', 'monkey_phrase',
+      'duck_phrase', 'frog_phrase', 'bear_phrase', 'rabbit_phrase',
+      'cat_phrase', 'dog_phrase', 'panda_phrase', 'cow_phrase', 'sheep_phrase'
+    ],
+    fruits: [
+      'fruit_apple', 'fruit_banana', 'fruit_orange', 'fruit_strawberry',
+      'fruit_watermelon', 'fruit_carrot', 'fruit_milk', 'fruit_cookie',
+      'fruit_grapes', 'fruit_corn', 'fruit_cheese', 'fruit_honey'
+    ],
+    vehicles: [
+      'vehicle_car', 'vehicle_bus', 'vehicle_train', 'vehicle_airplane',
+      'vehicle_boat', 'vehicle_bicycle', 'vehicle_firetruck', 'vehicle_helicopter'
+    ],
+    colors: [
+      'color_red', 'color_blue', 'color_yellow', 'color_green', 'color_purple',
+      'color_pink', 'color_orange', 'color_brown', 'color_white', 'color_black'
+    ],
+    feed: [
+      'feed_prompt', 'feed_yum', 'feed_monkey_ask', 'feed_bear_ask',
+      'feed_rabbit_ask', 'feed_cat_ask', 'feed_dog_ask', 'feed_panda_ask',
+      'feed_elephant_ask', 'feed_duck_ask', 'praise_great', 'praise_yay'
+    ]
+  };
+
+  function preloadTheme(themeName) {
+    var keys = themeAudioKeys[themeName];
+    if (!keys || !keys.length) return;
+    var index = 0;
+    function loadNext() {
+      if (index >= keys.length) return;
+      var k = keys[index++];
+      getOrLoadBuffer(k, function() {
+        setTimeout(loadNext, 35);
+      });
+    }
+    loadNext();
+  }
+
+  // Lightweight 2-element voice pool for HTMLAudioElement fallback
   function initAudioTags() {
     try {
-      if (!voiceAudio) {
-        voiceAudio = new Audio();
-        voiceAudio.preload = 'none';
+      if (!voicePool[0]) {
+        voicePool[0] = new Audio();
+        voicePool[0].preload = 'auto';
+      }
+      if (!voicePool[1]) {
+        voicePool[1] = new Audio();
+        voicePool[1].preload = 'auto';
       }
       if (!musicAudio) {
         musicAudio = new Audio();
-        musicAudio.preload = 'none';
+        musicAudio.preload = 'auto';
       }
     } catch (err) {}
   }
 
-  // Unlock audio on iOS Safari on user gesture
+  function getNextVoiceAudio() {
+    initAudioTags();
+    var a = voicePool[voicePoolIdx];
+    voicePoolIdx = (voicePoolIdx + 1) % voicePool.length;
+    return a;
+  }
+
+  // Unlock audio on iOS Safari on user gesture (Web Audio + HTMLAudio elements)
   function unlock() {
-    if (isUnlocked) return;
-    
     var ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') {
+      try { ctx.resume(); } catch (e) {}
+    }
+
+    if (isUnlocked) return;
+
     if (ctx) {
-      if (ctx.state === 'suspended') {
-        try { ctx.resume(); } catch (e) {}
-      }
       try {
         var buffer = ctx.createBuffer(1, 1, 22050);
         var source = ctx.createBufferSource();
         source.buffer = buffer;
         source.connect(ctx.destination);
         source.start(0);
-      } catch (e) {
-        console.warn('AudioContext buffer unlock error:', e);
-      }
+      } catch (e) {}
     }
 
     initAudioTags();
     isUnlocked = true;
 
-    // Preload only essential small clips (<15KB)
+    // Preload welcome, yum, and essential sounds
     getOrLoadBuffer('welcome');
     getOrLoadBuffer('feed_yum');
+    getOrLoadBuffer('praise_great');
+  }
+
+  // Global touch capture to wake up AudioContext on ANY screen tap
+  if (typeof window !== 'undefined') {
+    var wakeAudio = function() {
+      unlock();
+      var c = getAudioContext();
+      if (c && c.state === 'suspended') {
+        try { c.resume(); } catch (e) {}
+      }
+    };
+    window.addEventListener('touchstart', wakeAudio, { capture: true, passive: true });
+    window.addEventListener('touchend', wakeAudio, { capture: true, passive: true });
+    window.addEventListener('click', wakeAudio, { capture: true, passive: true });
   }
 
   // Instantly silence all active speech, music, synthesized notes, and buffers
@@ -256,18 +349,18 @@ var AudioEngine = (function() {
       } catch (e) {}
       currentBufferSource = null;
     }
-    if (voiceAudio) {
-      try {
-        voiceAudio.pause();
-      } catch (e) {}
+    for (var i = 0; i < voicePool.length; i++) {
+      if (voicePool[i]) {
+        try {
+          voicePool[i].pause();
+        } catch (e) {}
+      }
     }
     if (musicAudio) {
       try {
         musicAudio.pause();
       } catch (e) {}
     }
-    currentVoiceAudio = null;
-    currentMusicAudio = null;
 
     if ('speechSynthesis' in window) {
       try {
@@ -284,12 +377,15 @@ var AudioEngine = (function() {
   function playClip(key, onEnded) {
     try {
       unlock();
+      var ctx = getAudioContext();
+      if (ctx && ctx.state === 'suspended') {
+        try { ctx.resume(); } catch (e) {}
+      }
 
       // Check if this is a nursery rhyme song
       var isSong = key && key.indexOf('song_') === 0;
 
       if (isSong) {
-        // Stop any currently playing audio before starting song
         stopAll();
 
         var songUrl = audioFiles[key];
@@ -303,10 +399,13 @@ var AudioEngine = (function() {
         }
 
         try {
-          musicAudio.pause();
-          musicAudio.src = songUrl;
-          if (musicAudio.readyState >= 1) {
-            musicAudio.currentTime = 0;
+          if (musicAudio.src && musicAudio.src.indexOf(songUrl) !== -1) {
+            if (musicAudio.readyState >= 1) {
+              musicAudio.currentTime = 0;
+            }
+          } else {
+            musicAudio.pause();
+            musicAudio.src = songUrl;
           }
         } catch (e) {}
 
@@ -314,9 +413,6 @@ var AudioEngine = (function() {
           try {
             musicAudio.removeEventListener('ended', songEndedHandler);
           } catch (e) {}
-          if (currentMusicAudio === musicAudio) {
-            currentMusicAudio = null;
-          }
           if (typeof onEnded === 'function') {
             onEnded();
           }
@@ -325,7 +421,6 @@ var AudioEngine = (function() {
         try {
           musicAudio.addEventListener('ended', songEndedHandler);
         } catch (e) {}
-        currentMusicAudio = musicAudio;
 
         var playPromise = musicAudio.play();
         if (playPromise && playPromise.catch) {
@@ -336,28 +431,15 @@ var AudioEngine = (function() {
         return;
       }
 
-      // Voice / SFX clip
+      // Stop previous active voice buffer
       if (currentBufferSource) {
         try {
           currentBufferSource.stop(0);
         } catch (e) {}
         currentBufferSource = null;
       }
-      if (voiceAudio) {
-        try {
-          voiceAudio.pause();
-        } catch (e) {}
-      }
-      currentVoiceAudio = null;
 
-      if ('speechSynthesis' in window) {
-        try {
-          window.speechSynthesis.cancel();
-        } catch (e) {}
-      }
-
-      var ctx = getAudioContext();
-      // 1. Try zero-latency Web Audio AudioBuffer if decoded
+      // 1. Instant zero-latency Web Audio playback if buffer is ready
       if (ctx && soundBuffers[key]) {
         try {
           var bSource = ctx.createBufferSource();
@@ -377,54 +459,49 @@ var AudioEngine = (function() {
           bSource.start(0);
           return;
         } catch (err) {
-          console.warn('Buffer play failed, using Audio tag fallback', err);
+          console.warn('Buffer playback failed, using audio tag fallback', err);
         }
       }
 
-      // 2. Play via dedicated voiceAudio element
+      // 2. Play via alternating voiceAudio pool while fetching buffer for next time
       var voiceUrl = audioFiles[key];
       if (voiceUrl) {
-        if (!voiceAudio) {
-          voiceAudio = new Audio();
-        }
-
-        try {
-          voiceAudio.pause();
-          voiceAudio.src = voiceUrl;
-          if (voiceAudio.readyState >= 1) {
-            voiceAudio.currentTime = 0;
-          }
-        } catch (errTime) {}
-
-        var voiceEndedHandler = function() {
+        var audioTag = getNextVoiceAudio();
+        if (audioTag) {
           try {
-            voiceAudio.removeEventListener('ended', voiceEndedHandler);
-          } catch (e) {}
-          if (currentVoiceAudio === voiceAudio) {
-            currentVoiceAudio = null;
-          }
-          if (typeof onEnded === 'function') {
-            onEnded();
-          }
-        };
+            if (audioTag.src && audioTag.src.indexOf(voiceUrl) !== -1) {
+              if (audioTag.readyState >= 1) {
+                audioTag.currentTime = 0;
+              }
+            } else {
+              audioTag.src = voiceUrl;
+            }
 
-        try {
-          voiceAudio.addEventListener('ended', voiceEndedHandler);
-        } catch (e) {}
-        currentVoiceAudio = voiceAudio;
+            var voiceEndedHandler = function() {
+              try {
+                audioTag.removeEventListener('ended', voiceEndedHandler);
+              } catch (e) {}
+              if (typeof onEnded === 'function') {
+                onEnded();
+              }
+            };
+            audioTag.addEventListener('ended', voiceEndedHandler);
 
-        try {
-          var p = voiceAudio.play();
-          if (p && p.catch) {
-            p.catch(function(err) {
-              fallbackSpeech(key, onEnded);
-            });
+            var p = audioTag.play();
+            if (p && p.catch) {
+              p.catch(function(err) {
+                if (err && err.name === 'AbortError') return; // User tapped another card, do not clobber
+                fallbackSpeech(key, onEnded);
+              });
+            }
+          } catch (errPlay) {
+            fallbackSpeech(key, onEnded);
           }
-        } catch (errPlay) {
+        } else {
           fallbackSpeech(key, onEnded);
         }
 
-        // Cache buffer lazily for next time
+        // Cache buffer lazily for subsequent instant playback
         getOrLoadBuffer(key);
       } else {
         fallbackSpeech(key, onEnded);
@@ -444,58 +521,133 @@ var AudioEngine = (function() {
       return;
     }
 
-    window.speechSynthesis.cancel();
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {}
 
     var text = textOrKey;
-    // Map known keys to readable text if a key was passed
+    // Comprehensive text map for all content items
     var textMap = {
+      // 🦁 Animals
       lion_phrase: "Lion! L is for Lion. Roar!",
       elephant_phrase: "Elephant! E is for Elephant. Pawoo!",
       monkey_phrase: "Monkey! M is for Monkey. Ooh ooh aah aah!",
       duck_phrase: "Duck! D is for Duck. Quack quack quack!",
       frog_phrase: "Frog! F is for Frog. Ribbit ribbit!",
       bear_phrase: "Bear! B is for Bear. Big warm hug!",
+      rabbit_phrase: "Rabbit! R is for Rabbit. Hop hop hop!",
+      cat_phrase: "Cat! C is for Cat. Meow meow!",
+      dog_phrase: "Dog! D is for Dog. Woof woof!",
+      panda_phrase: "Panda! P is for Panda. Crunch crunch bamboo!",
+      cow_phrase: "Cow! C is for Cow. Moo moo!",
+      sheep_phrase: "Sheep! S is for Sheep. Baa baa!",
+
       word_lion: "Lion",
       word_elephant: "Elephant",
       word_monkey: "Monkey",
       word_duck: "Duck",
       word_frog: "Frog",
       word_bear: "Bear",
+      word_rabbit: "Rabbit",
+      word_cat: "Cat",
+      word_dog: "Dog",
+      word_panda: "Panda",
+      word_cow: "Cow",
+      word_sheep: "Sheep",
+
+      // 🍎 Foods
+      fruit_apple: "Apple! Sweet red apple!",
+      fruit_banana: "Banana! Yummy yellow banana!",
+      fruit_orange: "Orange! Juicy orange!",
+      fruit_strawberry: "Strawberry! Berry berry sweet!",
+      fruit_watermelon: "Watermelon! Fresh and cool!",
+      fruit_carrot: "Carrot! Crunchy orange carrot!",
+      fruit_milk: "Milk! Healthy white milk!",
+      fruit_cookie: "Cookie! Delicious chocolate cookie!",
+      fruit_grapes: "Grapes! Sweet purple grapes!",
+      fruit_corn: "Corn! Golden sweet corn!",
+      fruit_cheese: "Cheese! Tasty yellow cheese!",
+      fruit_honey: "Honey! Sweet golden honey!",
+      fruit_fish: "Fish! Fresh little fish!",
+      fruit_bone: "Bone! Crunchy tasty bone!",
+      fruit_bamboo: "Bamboo! Fresh green bamboo!",
+
+      // 🚗 Vehicles
+      vehicle_car: "Car! Beep beep! Let's go for a ride!",
+      vehicle_bus: "Bus! The wheels on the bus go round and round!",
+      vehicle_train: "Train! Choo choo! All aboard!",
+      vehicle_airplane: "Airplane! Flying high in the sky! Whoosh!",
+      vehicle_boat: "Boat! Floating on the gentle water! Splish splash!",
+      vehicle_bicycle: "Bicycle! Ring ring! Happy pedals go round!",
+      vehicle_firetruck: "Fire Truck! Wee woo wee woo! Brave and fast!",
+      vehicle_helicopter: "Helicopter! Chop chop chop! Flying up so high!",
+
+      // 🎨 Colors
+      color_red: "Red! Bright red apple!",
+      color_blue: "Blue! Ocean blue!",
+      color_yellow: "Yellow! Sunny yellow!",
+      color_green: "Green! Green grass!",
+      color_purple: "Purple! Royal purple!",
+      color_pink: "Pink! Pretty pink flower!",
+      color_orange: "Orange! Bright orange!",
+      color_brown: "Brown! Teddy bear brown!",
+      color_white: "White! Puffy white cloud!",
+      color_black: "Black! Shiny black night!",
+
+      // 🍼 Feed Friends
+      feed_prompt: "Feed the hungry animal friends!",
+      feed_yum: "Yummy! Nom nom nom! Thank you!",
+      feed_monkey_ask: "Milo wants a yellow banana!",
+      feed_bear_ask: "Barnaby wants sweet honey!",
+      feed_rabbit_ask: "Bunny wants a crunchy carrot!",
+      feed_cat_ask: "Cleo wants a tasty fish!",
+      feed_dog_ask: "Buster wants a crunchy bone!",
+      feed_panda_ask: "Panpan wants green bamboo!",
+      feed_elephant_ask: "Ellie wants juicy watermelon!",
+      feed_duck_ask: "Ducky wants sweet golden corn!",
+
+      // Nature, Prompts & Modes
       sun: "Sunny day! Good morning, sun!",
-      cloud: "Puffy cloud! Raindrops falling down!",
+      cloud: "Puffy cloud! Floating in the sky!",
       flower: "Pretty flower! Bloom bloom bloom!",
       rainbow: "Look! A beautiful rainbow!",
       butterfly: "Butterfly! Flutter flutter by!",
       praise_great: "Great job! You found it!",
       praise_yay: "Yay! Awesome work!",
       praise_super: "You are a superstar!",
-      praise_highfive: "High five! Woohoo!"
+      praise_highfive: "High five! Woohoo!",
+      welcome: "Welcome to Toddler Safari! Tap any friend to play!",
+      pause_take_break: "Time for a break! Rest your eyes and have some water.",
+      pause_resume: "Welcome back! Let's play!"
     };
 
     if (textMap[textOrKey]) {
       text = textMap[textOrKey];
     }
 
-    var utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    utterance.rate = 0.85; // Pleasant, articulated speed for 2-3 yo
-    utterance.pitch = 1.1; // Cheerful, friendly tone
+    try {
+      var utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.85; // Pleasant, articulated speed for 2-3 yo
+      utterance.pitch = 1.1; // Cheerful, friendly tone
 
-    // Pick best American English voice available
-    var voices = window.speechSynthesis.getVoices();
-    for (var i = 0; i < voices.length; i++) {
-      var v = voices[i];
-      if (v.lang === 'en-US' && (v.name === 'Samantha' || v.name === 'Ava' || v.name === 'Alex' || v.name === 'Victoria')) {
-        utterance.voice = v;
-        break;
+      var voices = window.speechSynthesis.getVoices();
+      for (var i = 0; i < voices.length; i++) {
+        var v = voices[i];
+        if (v.lang === 'en-US' && (v.name === 'Samantha' || v.name === 'Ava' || v.name === 'Alex' || v.name === 'Victoria')) {
+          utterance.voice = v;
+          break;
+        }
       }
-    }
 
-    if (typeof onEnded === 'function') {
-      utterance.onend = onEnded;
-    }
+      if (typeof onEnded === 'function') {
+        utterance.onend = onEnded;
+      }
 
-    window.speechSynthesis.speak(utterance);
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      if (typeof onEnded === 'function') onEnded();
+    }
   }
 
   // ==========================================
@@ -725,6 +877,8 @@ var AudioEngine = (function() {
   return {
     unlock: unlock,
     playClip: playClip,
+    preloadTheme: preloadTheme,
+    preloadClip: getOrLoadBuffer,
     playPop: playPop,
     playChime: playChime,
     playBoing: playBoing,
