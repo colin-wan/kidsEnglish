@@ -141,6 +141,7 @@ CLIPS = {
     'pause_resume': "Welcome back! Let's play!",
 
     # 🔤 Alphabet A-Z Phonics & Prompts
+    'song_abc': "A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, and Z! Now I know my A B Cs, next time won't you sing with me!",
     'theme_alphabet': "Let's learn the ABC alphabet!",
     'letter_phrase_a': 'A! A says ah, ah, Apple!',
     'letter_phrase_b': 'B! B says buh, buh, Bear!',

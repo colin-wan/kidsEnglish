@@ -143,7 +143,7 @@ var App = (function() {
     var el = target.nodeType === 3 ? target.parentNode : target;
     if (!el) return false;
     if (typeof el.closest === 'function') {
-      return !!el.closest('button, .mode-btn, .theme-pill, .bubbles-back-btn, .bubbles-info-bar, .top-bar, .theme-nav-bar, .bottom-nature-bar, .flower-touchable, .sun-item, .cloud-item, #start-btn, .splash-overlay, .find-replay-btn, .pause-btn, .big-resume-btn, .pause-overlay, .feed-skip-btn, .alphabet-modal-overlay, .alphabet-modal-card');
+      return !!el.closest('button, .mode-btn, .theme-pill, .bubbles-back-btn, .bubbles-info-bar, .top-bar, .theme-nav-bar, .bottom-nature-bar, .flower-touchable, .sun-item, .cloud-item, #start-btn, .splash-overlay, .find-replay-btn, .pause-btn, .big-resume-btn, .pause-overlay, .feed-skip-btn, .alphabet-modal-overlay, .alphabet-modal-card, .handbook-card, .alphabet-toolbar');
     }
     while (el && el !== document.body && el !== document.documentElement) {
       var tag = (el.tagName || '').toLowerCase();
@@ -166,7 +166,10 @@ var App = (function() {
         cls.indexOf('alphabet-modal') !== -1 ||
         cls.indexOf('alphabet-nav-btn') !== -1 ||
         cls.indexOf('alphabet-sound-btn') !== -1 ||
-        cls.indexOf('alphabet-spotlight') !== -1
+        cls.indexOf('alphabet-spotlight') !== -1 ||
+        cls.indexOf('handbook') !== -1 ||
+        cls.indexOf('stamp') !== -1 ||
+        cls.indexOf('alphabet-tool') !== -1
       )) return true;
       el = el.parentNode;
     }
@@ -302,12 +305,63 @@ var App = (function() {
       });
     }
 
+    var alphaWordBox = document.getElementById('spotlight-word-box');
+    if (alphaWordBox) {
+      attachTouchOrClick(alphaWordBox, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        handleSpotlightWordTap(e);
+      });
+    }
+
+    var alphaStampBtn = document.getElementById('spotlight-stamp-btn');
+    if (alphaStampBtn) {
+      attachTouchOrClick(alphaStampBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        handleSpotlightStampTap(e);
+      });
+    }
+
     var alphaModalEl = document.getElementById('alphabet-modal');
     if (alphaModalEl) {
       attachTouchOrClick(alphaModalEl, function(e) {
         if (e && e.target === alphaModalEl) {
           closeAlphabetModal();
         }
+      });
+    }
+
+    // Handbook Modal Events
+    var handbookCloseBtn = document.getElementById('alphabet-handbook-close');
+    if (handbookCloseBtn) {
+      attachTouchOrClick(handbookCloseBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        closeHandbookModal();
+      });
+    }
+
+    var handbookModalEl = document.getElementById('alphabet-handbook-modal');
+    if (handbookModalEl) {
+      attachTouchOrClick(handbookModalEl, function(e) {
+        if (e && e.target === handbookModalEl) {
+          closeHandbookModal();
+        }
+      });
+    }
+
+    var handbookSingBtn = document.getElementById('handbook-btn-sing');
+    if (handbookSingBtn) {
+      attachTouchOrClick(handbookSingBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        closeHandbookModal();
+        startAbcSong();
+      });
+    }
+
+    var handbookResetBtn = document.getElementById('handbook-btn-reset');
+    if (handbookResetBtn) {
+      attachTouchOrClick(handbookResetBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        resetBadges();
       });
     }
 
@@ -396,6 +450,8 @@ var App = (function() {
     clearFindTimers();
     clearSongPlayingStates();
     closeAlphabetModal();
+    closeHandbookModal();
+    stopAbcSong();
 
     // 1. Halt all audio sources immediately
     try {
@@ -506,6 +562,8 @@ var App = (function() {
     clearFindTimers();
     clearSongPlayingStates();
     closeAlphabetModal();
+    closeHandbookModal();
+    stopAbcSong();
 
     currentTheme = theme;
     targetItem = null;
@@ -919,12 +977,385 @@ var App = (function() {
   // ==========================================
   var currentAlphabetIndex = 0;
 
+  // 1. Golden Badges Handbook State (Persistent in localStorage)
+  var collectedBadges = {};
+
+  function loadBadges() {
+    try {
+      var saved = localStorage.getItem('toddler_abc_badges');
+      if (saved) {
+        collectedBadges = JSON.parse(saved) || {};
+      }
+    } catch (e) {
+      collectedBadges = {};
+    }
+  }
+
+  function saveBadges() {
+    try {
+      localStorage.setItem('toddler_abc_badges', JSON.stringify(collectedBadges));
+    } catch (e) {}
+  }
+
+  function isBadgeCollected(letter) {
+    if (!letter) return false;
+    return !!collectedBadges[letter.toUpperCase()];
+  }
+
+  function getCollectedBadgesCount() {
+    var count = 0;
+    for (var k in collectedBadges) {
+      if (collectedBadges.hasOwnProperty(k) && collectedBadges[k]) count++;
+    }
+    return count;
+  }
+
+  function collectBadge(letter) {
+    if (!letter) return;
+    var upper = letter.toUpperCase();
+    var already = isBadgeCollected(upper);
+    collectedBadges[upper] = true;
+    saveBadges();
+
+    try {
+      AudioEngine.playStampSound();
+    } catch (e) {}
+
+    // Update Spotlight card stamp button if open
+    var stampBtn = document.getElementById('spotlight-stamp-btn');
+    var stampText = document.getElementById('spotlight-stamp-text');
+    if (stampBtn && stampText) {
+      stampBtn.classList.add('collected');
+      stampText.textContent = '🏅 Badge Collected!';
+    }
+
+    // Update pod star badge on the grid
+    var pod = document.getElementById('pod-letter_' + letter.toLowerCase());
+    if (pod && !pod.querySelector('.pod-badge-stamp')) {
+      var star = document.createElement('span');
+      star.className = 'pod-badge-stamp';
+      star.textContent = '⭐';
+      star.title = 'Badge Collected!';
+      pod.appendChild(star);
+    }
+
+    updateBadgesToolbar();
+
+    if (!already) {
+      addStar(2);
+      var totalCount = getCollectedBadgesCount();
+      if (totalCount === 26) {
+        triggerGrandAlphabetCelebration();
+      }
+    }
+  }
+
+  function updateBadgesToolbar() {
+    var summaryEl = document.getElementById('abc-badges-summary');
+    if (summaryEl) {
+      summaryEl.textContent = 'Badges: ' + getCollectedBadgesCount() + ' / 26';
+    }
+  }
+
+  function triggerGrandAlphabetCelebration() {
+    try {
+      AudioEngine.playFanfare();
+      AudioEngine.playClip('praise_super');
+    } catch (e) {}
+
+    for (var f = 0; f < 6; f++) {
+      (function(offset) {
+        setTimeout(function() {
+          var cx = Math.random() * (window.innerWidth || 600);
+          var cy = Math.random() * (window.innerHeight || 400);
+          ParticleSystem.burst(cx, cy, 32);
+        }, offset);
+      })(f * 220);
+    }
+    addStar(10);
+  }
+
+  // 2. Handbook Modal Logic
+  function openHandbookModal() {
+    if (isPaused) return;
+    loadBadges();
+    var modal = document.getElementById('alphabet-handbook-modal');
+    if (!modal) return;
+
+    var grid = document.getElementById('handbook-badges-grid');
+    if (grid) {
+      grid.innerHTML = '';
+      var letters = ContentData.alphabet || [];
+      for (var i = 0; i < letters.length; i++) {
+        var item = letters[i];
+        var isUnlocked = isBadgeCollected(item.letter);
+
+        var slot = document.createElement('div');
+        slot.className = 'handbook-badge-slot ' + (isUnlocked ? 'unlocked' : 'locked');
+        slot.setAttribute('data-index', i);
+        slot.innerHTML = (
+          '<span class="badge-letter-text">' + item.letter + item.lower + '</span>' +
+          '<span class="badge-emoji-text">' + (isUnlocked ? item.bubbleEmoji : '❓') + '</span>'
+        );
+
+        attachTouchOrClick(slot, (function(idx, obj, unlocked) {
+          return function(e) {
+            if (isPaused) return;
+            if (unlocked) {
+              closeHandbookModal();
+              openAlphabetModal(idx);
+            } else {
+              AudioEngine.playBoing();
+              showPrompt('Explore letter ' + obj.letter + ' to unlock its badge! ⭐', obj.bubbleEmoji);
+            }
+          };
+        })(i, item, isUnlocked));
+
+        grid.appendChild(slot);
+      }
+    }
+
+    var count = getCollectedBadgesCount();
+    var counterText = document.getElementById('handbook-counter-text');
+    if (counterText) {
+      counterText.textContent = 'Collected ' + count + ' / 26';
+    }
+
+    var grandBanner = document.getElementById('handbook-grand-banner');
+    if (grandBanner) {
+      if (count === 26) {
+        grandBanner.classList.remove('hidden');
+      } else {
+        grandBanner.classList.add('hidden');
+      }
+    }
+
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeHandbookModal() {
+    var modal = document.getElementById('alphabet-handbook-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  function resetBadges() {
+    if (confirm('Reset your alphabet badges? / 重新收集字母徽章？')) {
+      collectedBadges = {};
+      saveBadges();
+      updateBadgesToolbar();
+      renderAlphabetGrid();
+      openHandbookModal();
+    }
+  }
+
+  // 3. Interactive Object Action Verbs & Handlers
+  var actionPillVerbs = {
+    'letter_a': '👉 Tap to Crunch!',
+    'letter_b': '👉 Tap to Growl!',
+    'letter_c': '👉 Tap to Meow!',
+    'letter_d': '👉 Tap to Quack!',
+    'letter_e': '👉 Tap to Trumpet!',
+    'letter_f': '👉 Tap to Ribbit!',
+    'letter_g': '👉 Tap to Pop!',
+    'letter_h': '👉 Tap to Buzz!',
+    'letter_i': '👉 Tap to Shimmer!',
+    'letter_j': '👉 Tap to Wobble!',
+    'letter_k': '👉 Tap to Bounce!',
+    'letter_l': '👉 Tap to Roar!',
+    'letter_m': '👉 Tap to Chatter!',
+    'letter_n': '👉 Tap to Chirp!',
+    'letter_o': '👉 Tap to Squish!',
+    'letter_p': '👉 Tap to Crunch!',
+    'letter_q': '👉 Tap to Fanfare!',
+    'letter_r': '👉 Tap to Hop!',
+    'letter_s': '👉 Tap to Shine!',
+    'letter_t': '👉 Tap to Whistle!',
+    'letter_u': '👉 Tap for Raindrops!',
+    'letter_v': '👉 Tap to Honk!',
+    'letter_w': '👉 Tap to Munch!',
+    'letter_x': '👉 Tap to Play Music!',
+    'letter_y': '👉 Tap to Spin!',
+    'letter_z': '👉 Tap to Gallop!'
+  };
+
+  function handleSpotlightWordTap(e) {
+    if (isPaused) return;
+    var letters = ContentData.alphabet;
+    if (!letters || letters.length === 0) return;
+    var item = letters[currentAlphabetIndex];
+    if (!item) return;
+
+    var emojiEl = document.getElementById('spotlight-emoji');
+    if (emojiEl) {
+      emojiEl.classList.remove('item-action-bounce');
+      void emojiEl.offsetWidth;
+      emojiEl.classList.add('item-action-bounce');
+    }
+
+    var wordBox = document.getElementById('spotlight-word-box');
+    var rect = wordBox ? wordBox.getBoundingClientRect() : { left: 150, top: 200, width: 80, height: 40 };
+    ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 14);
+
+    AudioEngine.playAlphabetObjectSFX(item.id);
+    addStar(1);
+  }
+
+  function handleSpotlightStampTap(e) {
+    if (isPaused) return;
+    var letters = ContentData.alphabet;
+    if (!letters || letters.length === 0) return;
+    var item = letters[currentAlphabetIndex];
+    if (!item) return;
+
+    var stampBtn = document.getElementById('spotlight-stamp-btn');
+    var rect = stampBtn ? stampBtn.getBoundingClientRect() : { left: 150, top: 300, width: 100, height: 40 };
+    ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 20);
+
+    collectBadge(item.letter);
+  }
+
+  // 4. Interactive ABC Song Sing-Along with Synchronized Bouncing Highlights
+  var isSingingAbc = false;
+  var abcSingTimers = [];
+
+  var ABC_SONG_TIMINGS = [
+    { letter: 'a', time: 0 },
+    { letter: 'b', time: 800 },
+    { letter: 'c', time: 1700 },
+    { letter: 'd', time: 2700 },
+    { letter: 'e', time: 3600 },
+    { letter: 'f', time: 4400 },
+    { letter: 'g', time: 5400 },
+    { letter: 'h', time: 6300 },
+    { letter: 'i', time: 7200 },
+    { letter: 'j', time: 8200 },
+    { letter: 'k', time: 9100 },
+    { letter: 'l', time: 10000 },
+    { letter: 'm', time: 10800 },
+    { letter: 'n', time: 11700 },
+    { letter: 'o', time: 12600 },
+    { letter: 'p', time: 13500 },
+    { letter: 'q', time: 14400 },
+    { letter: 'r', time: 15300 },
+    { letter: 's', time: 16200 },
+    { letter: 't', time: 17200 },
+    { letter: 'u', time: 18100 },
+    { letter: 'v', time: 19200 },
+    { letter: 'w', time: 20100 },
+    { letter: 'x', time: 21200 },
+    { letter: 'y', time: 22100 },
+    { letter: 'z', time: 23000 }
+  ];
+
+  function stopAbcSong() {
+    isSingingAbc = false;
+    for (var i = 0; i < abcSingTimers.length; i++) {
+      clearTimeout(abcSingTimers[i]);
+    }
+    abcSingTimers = [];
+
+    var pods = document.querySelectorAll('.alphabet-pod');
+    for (var p = 0; p < pods.length; p++) {
+      pods[p].classList.remove('sing-active');
+    }
+
+    var singBtn = document.getElementById('alphabet-sing-btn');
+    var singText = document.getElementById('abc-sing-btn-text');
+    if (singBtn) singBtn.classList.remove('singing');
+    if (singText) singText.textContent = 'Sing ABC Song';
+
+    try {
+      AudioEngine.stopVoice();
+    } catch (e) {}
+  }
+
+  function startAbcSong() {
+    if (isSingingAbc) {
+      stopAbcSong();
+      return;
+    }
+    stopAbcSong();
+    isSingingAbc = true;
+
+    var singBtn = document.getElementById('alphabet-sing-btn');
+    var singText = document.getElementById('abc-sing-btn-text');
+    if (singBtn) singBtn.classList.add('singing');
+    if (singText) singText.textContent = '⏹ Stop Song';
+
+    AudioEngine.playClip('song_abc', function() {
+      if (isSingingAbc) {
+        stopAbcSong();
+        triggerGrandAlphabetCelebration();
+      }
+    });
+
+    for (var t = 0; t < ABC_SONG_TIMINGS.length; t++) {
+      (function(entry) {
+        var timer = setTimeout(function() {
+          if (!isSingingAbc || isPaused) return;
+
+          var all = document.querySelectorAll('.alphabet-pod');
+          for (var a = 0; a < all.length; a++) all[a].classList.remove('sing-active');
+
+          var activePod = document.getElementById('pod-letter_' + entry.letter);
+          if (activePod) {
+            activePod.classList.add('sing-active');
+            try {
+              activePod.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            } catch (e) {}
+            var rect = activePod.getBoundingClientRect();
+            ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 8);
+          }
+
+          showPrompt("Sing along: Letter " + entry.letter.toUpperCase() + "! 🎵", "🔤");
+        }, entry.time);
+        abcSingTimers.push(timer);
+      })(ABC_SONG_TIMINGS[t]);
+    }
+
+    // Chorus finale
+    abcSingTimers.push(setTimeout(function() {
+      if (!isSingingAbc) return;
+      showPrompt("Now I know my ABCs! 🌟", "⭐");
+      var all = document.querySelectorAll('.alphabet-pod');
+      for (var a = 0; a < all.length; a++) all[a].classList.add('sing-active');
+    }, 24600));
+
+    abcSingTimers.push(setTimeout(function() {
+      if (!isSingingAbc) return;
+      showPrompt("Next time won't you sing with me! 🎉", "🎶");
+    }, 26400));
+  }
+
+  // 5. Grid Rendering with Toolbar & Pod Stamps
   function renderAlphabetGrid() {
+    loadBadges();
     var letters = ContentData.alphabet;
     var frag = document.createDocumentFragment();
+
+    // Toolbar (Sing ABC Song & Badges Handbook)
+    var toolbar = document.createElement('div');
+    toolbar.className = 'alphabet-toolbar';
+    toolbar.innerHTML = (
+      '<button id="alphabet-sing-btn" class="alphabet-tool-btn abc-sing-btn" type="button">' +
+        '<span class="tool-btn-icon">🎵</span>' +
+        '<span id="abc-sing-btn-text">Sing ABC Song</span>' +
+      '</button>' +
+      '<button id="alphabet-handbook-btn" class="alphabet-tool-btn abc-handbook-btn" type="button">' +
+        '<span class="tool-btn-icon">🏅</span>' +
+        '<span id="abc-badges-summary">Badges: ' + getCollectedBadgesCount() + ' / 26</span>' +
+      '</button>'
+    );
+    frag.appendChild(toolbar);
+
     for (var i = 0; i < letters.length; i++) {
       var item = letters[i];
       tapCounters[item.id] = 0;
+      var hasBadge = isBadgeCollected(item.letter);
 
       var pod = document.createElement('div');
       pod.className = 'animal-pod alphabet-pod';
@@ -933,6 +1364,7 @@ var App = (function() {
 
       pod.innerHTML = (
         '<div class="letter-badge alphabet-badge" style="background-color:' + (item.color || '#E65100') + '">' + item.letter + '</div>' +
+        (hasBadge ? '<span class="pod-badge-stamp" title="Badge Collected!">⭐</span>' : '') +
         '<div class="animal-svg-box">' + item.svg + '</div>' +
         '<div class="animal-name-tag alphabet-name-tag"><span class="letter-display-pair">' + item.letter + item.lower + '</span> - ' + item.name + '</div>' +
         '<div class="speech-bubble" id="speech-' + item.id + '" style="display:none;"></div>'
@@ -948,10 +1380,29 @@ var App = (function() {
       frag.appendChild(pod);
     }
     playgroundEl.appendChild(frag);
+
+    // Bind toolbar buttons
+    var singBtn = document.getElementById('alphabet-sing-btn');
+    if (singBtn) {
+      attachTouchOrClick(singBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        startAbcSong();
+      });
+    }
+
+    var handbookBtn = document.getElementById('alphabet-handbook-btn');
+    if (handbookBtn) {
+      attachTouchOrClick(handbookBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        openHandbookModal();
+      });
+    }
   }
 
   function handleAlphabetTap(item, index, event) {
     clearSongPlayingStates();
+    stopAbcSong();
+
     var pod = document.getElementById('pod-' + item.id);
     if (pod) {
       pod.classList.remove('anim-jump');
@@ -964,6 +1415,9 @@ var App = (function() {
 
     showSpeech(item.id, item.letter + item.lower + " - " + item.name + " " + item.bubbleEmoji);
     addStar(1);
+
+    // Auto collect badge when exploring this letter
+    collectBadge(item.letter);
 
     // Open the rich spotlight modal for this letter
     openAlphabetModal(index);
@@ -1032,6 +1486,24 @@ var App = (function() {
     var wordEl = document.getElementById('spotlight-word');
     if (wordEl) {
       wordEl.textContent = item.name;
+    }
+
+    var actionPill = document.getElementById('spotlight-action-pill');
+    if (actionPill) {
+      actionPill.textContent = actionPillVerbs[item.id] || '👉 Tap Me!';
+    }
+
+    var stampBtn = document.getElementById('spotlight-stamp-btn');
+    var stampText = document.getElementById('spotlight-stamp-text');
+    var hasBadge = isBadgeCollected(item.letter);
+    if (stampBtn && stampText) {
+      if (hasBadge) {
+        stampBtn.classList.add('collected');
+        stampText.textContent = '🏅 Badge Collected!';
+      } else {
+        stampBtn.classList.remove('collected');
+        stampText.textContent = '⭐ Collect Badge';
+      }
     }
 
     var phonicsEl = document.getElementById('spotlight-phonics');
@@ -1255,6 +1727,10 @@ var App = (function() {
       AudioEngine.playFanfare();
       addStar(3);
 
+      if (currentTheme === 'alphabet' && item.letter) {
+        collectBadge(item.letter);
+      }
+
       var praises = ['praise_great', 'praise_yay', 'praise_super', 'praise_highfive'];
       var praiseClip = praises[Math.floor(Math.random() * praises.length)];
 
@@ -1357,6 +1833,8 @@ var App = (function() {
     clearFindTimers();
     clearSongPlayingStates();
     closeAlphabetModal();
+    closeHandbookModal();
+    stopAbcSong();
 
     if (modeExploreBtn) modeExploreBtn.className = 'mode-btn' + (mode === 'explore' ? ' active' : '');
     if (modeFindBtn) modeFindBtn.className = 'mode-btn' + (mode === 'find' ? ' active' : '');

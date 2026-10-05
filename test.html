@@ -21,8 +21,8 @@
   <link rel="manifest" href="manifest.json">
   
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="style.css?v=3.5">
-  <link rel="stylesheet" href="style_v3.css?v=3.5">
+  <link rel="stylesheet" href="style.css?v=3.6">
+  <link rel="stylesheet" href="style_v3.css?v=3.6">
 </head>
 <body>
 
@@ -202,11 +202,18 @@
             <span class="spotlight-letter-upper" id="spotlight-upper">A</span>
             <span class="spotlight-letter-lower" id="spotlight-lower">a</span>
           </div>
-          <div class="alphabet-spotlight-word-box">
+          <div class="alphabet-spotlight-word-box" id="spotlight-word-box" title="Tap to interact!">
             <span class="spotlight-word-emoji" id="spotlight-emoji">🍎</span>
             <span class="spotlight-word-text" id="spotlight-word">Apple</span>
+            <span class="spotlight-action-pill" id="spotlight-action-pill">👉 Tap Me!</span>
           </div>
           <p class="alphabet-spotlight-phonics" id="spotlight-phonics">A says ah, ah, Apple!</p>
+          <div class="alphabet-spotlight-stamp-box">
+            <button id="spotlight-stamp-btn" class="spotlight-stamp-btn" type="button">
+              <span class="stamp-btn-icon" id="stamp-btn-icon">⭐</span>
+              <span id="spotlight-stamp-text">Collect Badge</span>
+            </button>
+          </div>
         </div>
         <div class="alphabet-spotlight-actions">
           <button id="alphabet-btn-prev" class="alphabet-nav-btn" title="Previous Letter">‹</button>
@@ -215,6 +222,36 @@
             <span>Listen</span>
           </button>
           <button id="alphabet-btn-next" class="alphabet-nav-btn" title="Next Letter">›</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🏅 Alphabet Badges Handbook Modal (26 Letter Golden Badges) -->
+    <div id="alphabet-handbook-modal" class="alphabet-modal-overlay hidden" aria-hidden="true">
+      <div class="alphabet-modal-card handbook-card" id="handbook-modal-card">
+        <button id="alphabet-handbook-close" class="alphabet-modal-close-btn" title="Close">✕</button>
+        <div class="handbook-header">
+          <div class="handbook-title-box">
+            <span class="handbook-icon">🏅</span>
+            <span class="handbook-title">ABC Golden Badges</span>
+          </div>
+          <span class="handbook-counter" id="handbook-counter-text">Collected 0 / 26</span>
+        </div>
+        <div class="handbook-badges-grid" id="handbook-badges-grid">
+          <!-- 26 Badges rendered dynamically -->
+        </div>
+        <div class="handbook-footer">
+          <div id="handbook-grand-banner" class="handbook-grand-banner hidden">
+            🎉 WOW! You collected all 26 ABC badges! You are an Alphabet Superstar! 🏆
+          </div>
+          <div class="handbook-footer-actions">
+            <button id="handbook-btn-sing" class="handbook-action-btn sing-btn" type="button">
+              <span>🎵 Sing ABC Song</span>
+            </button>
+            <button id="handbook-btn-reset" class="handbook-action-btn reset-btn" type="button">
+              <span>🔄 Reset Badges</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -256,10 +293,10 @@
   </div>
 
   <!-- JavaScript Modules (Loaded in order, ES5/ES6 iOS 12 safe) -->
-  <script src="js/audio.js?v=3.5"></script>
-  <script src="js/particles.js?v=3.5"></script>
-  <script src="js/content_data_v3.js?v=3.5"></script>
-  <script src="js/app_v3.js?v=3.5"></script>
+  <script src="js/audio.js?v=3.6"></script>
+  <script src="js/particles.js?v=3.6"></script>
+  <script src="js/content_data_v3.js?v=3.6"></script>
+  <script src="js/app_v3.js?v=3.6"></script>
 
 </body>
 </html>

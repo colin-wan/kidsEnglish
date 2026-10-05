@@ -1809,3 +1809,362 @@ body.ios-standalone .playground-area {
   background: #388E3C;
 }
 
+/* ==========================================
+   ALPHABET TOOLBAR (Sing ABC Song & Badges)
+   ========================================== */
+.alphabet-toolbar {
+  width: 95%;
+  max-width: 680px;
+  margin: 0 auto 12px auto;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  -webkit-align-items: center;
+  align-items: center;
+}
+
+.alphabet-tool-btn {
+  border: 3px solid #FFFFFF;
+  border-radius: 24px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  touch-action: manipulation;
+  transition: transform 0.15s ease;
+}
+
+.alphabet-tool-btn:active {
+  transform: scale(0.92);
+}
+
+.alphabet-tool-btn .tool-btn-icon {
+  font-size: 18px;
+  margin-right: 6px;
+}
+
+.abc-sing-btn {
+  background: linear-gradient(135deg, #FF6F00 0%, #FF8F00 100%);
+  color: #FFFFFF;
+}
+
+.abc-sing-btn.singing {
+  background: linear-gradient(135deg, #E53935 0%, #C62828 100%);
+  animation: singPulseBtn 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes singPulseBtn {
+  0% { transform: scale(1); box-shadow: 0 4px 12px rgba(229, 57, 53, 0.4); }
+  100% { transform: scale(1.05); box-shadow: 0 6px 18px rgba(229, 57, 53, 0.7); }
+}
+
+.abc-handbook-btn {
+  background: linear-gradient(135deg, #FFD54F 0%, #FFA000 100%);
+  color: #5D4037;
+}
+
+/* Karaoke Sing-along letter highlighting */
+.alphabet-pod.sing-active {
+  transform: scale(1.18) !important;
+  border-color: #FFD700 !important;
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.85), 0 8px 20px rgba(0, 0, 0, 0.25) !important;
+  z-index: 10;
+  animation: singPodHop 0.4s ease-in-out infinite alternate !important;
+}
+
+@keyframes singPodHop {
+  0% { transform: scale(1.15) translateY(0); }
+  100% { transform: scale(1.22) translateY(-8px); }
+}
+
+/* Golden Star Badge Stamp on Grid Pod */
+.alphabet-pod {
+  position: relative;
+}
+
+.pod-badge-stamp {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #FFE082 0%, #FFB300 100%);
+  border: 2px solid #FFFFFF;
+  border-radius: 50%;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  font-size: 13px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  animation: stampPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes stampPop {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ==========================================
+   INTERACTIVE WORD BOX IN SPOTLIGHT MODAL
+   ========================================== */
+.alphabet-spotlight-word-box {
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 2px dashed #FFA000;
+  margin: 0 auto 8px auto;
+  max-width: 280px;
+  transition: transform 0.15s ease, background 0.15s ease;
+  touch-action: manipulation;
+}
+
+.alphabet-spotlight-word-box:active {
+  transform: scale(0.94);
+  background: #FFF9C4;
+}
+
+.spotlight-action-pill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  background: #FF5722;
+  color: #FFFFFF;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 8px;
+  vertical-align: middle;
+  animation: actionPulse 1.2s infinite;
+}
+
+@keyframes actionPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.spotlight-word-emoji.item-action-bounce {
+  animation: itemActionBounce 0.45s ease-out;
+}
+
+@keyframes itemActionBounce {
+  0% { transform: scale(1) rotate(0deg); }
+  35% { transform: scale(1.4) rotate(-15deg); }
+  70% { transform: scale(1.2) rotate(15deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* Spotlight Badge Collect Button */
+.alphabet-spotlight-stamp-box {
+  margin-bottom: 12px;
+}
+
+.spotlight-stamp-btn {
+  background: linear-gradient(135deg, #FFF9C4 0%, #FFE082 100%);
+  border: 2px solid #FFA000;
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #E65100;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(255, 160, 0, 0.25);
+  display: inline-flex;
+  display: -webkit-inline-flex;
+  -webkit-align-items: center;
+  align-items: center;
+  touch-action: manipulation;
+  transition: transform 0.15s ease;
+}
+
+.spotlight-stamp-btn:active {
+  transform: scale(0.92);
+}
+
+.spotlight-stamp-btn .stamp-btn-icon {
+  margin-right: 6px;
+  font-size: 16px;
+}
+
+.spotlight-stamp-btn.collected {
+  background: linear-gradient(135deg, #FFD54F 0%, #FFB300 100%);
+  border-color: #FF8F00;
+  color: #3E2723;
+  box-shadow: 0 0 12px rgba(255, 179, 0, 0.5);
+}
+
+/* ==========================================
+   ALPHABET HANDBOOK MODAL (26 Badges)
+   ========================================== */
+.handbook-card {
+  max-width: 480px;
+  max-height: 88vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px 16px;
+}
+
+.handbook-header {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-right: 36px;
+}
+
+.handbook-title-box {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+}
+
+.handbook-icon {
+  font-size: 26px;
+  margin-right: 8px;
+}
+
+.handbook-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: #BF360C;
+}
+
+.handbook-counter {
+  font-size: 12px;
+  font-weight: 800;
+  background: #FFE082;
+  color: #B71C1C;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.handbook-badges-grid {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  -webkit-justify-content: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.handbook-badge-slot {
+  width: 58px;
+  height: 64px;
+  margin: 5px;
+  border-radius: 16px;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.15s ease;
+  box-sizing: border-box;
+}
+
+.handbook-badge-slot:active {
+  transform: scale(0.9);
+}
+
+.handbook-badge-slot.unlocked {
+  background: linear-gradient(135deg, #FFF9C4 0%, #FFE082 100%);
+  border: 3px solid #FFA000;
+  box-shadow: 0 3px 8px rgba(255, 160, 0, 0.35);
+}
+
+.handbook-badge-slot.locked {
+  background: rgba(245, 245, 245, 0.8);
+  border: 2px dashed #CFD8DC;
+  opacity: 0.6;
+}
+
+.badge-letter-text {
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.handbook-badge-slot.unlocked .badge-letter-text {
+  color: #E65100;
+}
+
+.handbook-badge-slot.locked .badge-letter-text {
+  color: #90A4AE;
+}
+
+.badge-emoji-text {
+  font-size: 18px;
+  line-height: 1;
+  margin-top: 3px;
+}
+
+.handbook-badge-slot.locked .badge-emoji-text {
+  filter: grayscale(100%);
+}
+
+.handbook-grand-banner {
+  background: linear-gradient(135deg, #FFEB3B 0%, #FF9800 100%);
+  color: #3E2723;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 900;
+  text-align: center;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 14px rgba(255, 152, 0, 0.4);
+  animation: grandGlow 1s ease-in-out infinite alternate;
+}
+
+@keyframes grandGlow {
+  0% { transform: scale(0.98); }
+  100% { transform: scale(1.02); }
+}
+
+.handbook-footer-actions {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-justify-content: space-around;
+  justify-content: space-around;
+  -webkit-align-items: center;
+  align-items: center;
+}
+
+.handbook-action-btn {
+  border: 2px solid #FFF;
+  border-radius: 20px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.handbook-action-btn.sing-btn {
+  background: #4CAF50;
+  color: #FFFFFF;
+}
+
+.handbook-action-btn.reset-btn {
+  background: #ECEFF1;
+  color: #546E7A;
+}
+
