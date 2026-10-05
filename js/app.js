@@ -34,6 +34,18 @@ var App = (function() {
   var bubblePopCount = 0;
   var lastBubblePopTime = 0;
 
+  // Nature Weather State ('day' | 'night' | 'rain')
+  var currentWeather = 'day';
+  var weatherBtnDay;
+  var weatherBtnNight;
+  var weatherBtnRain;
+  var sunEl;
+  var moonEl;
+  var rainLayerEl;
+  var firefliesLayerEl;
+  var puddle1El;
+  var puddle2El;
+
   // DOM Elements
   var playgroundEl;
   var starCountEl;
@@ -63,6 +75,17 @@ var App = (function() {
     pauseBtn = document.getElementById('pause-btn');
     pauseModalEl = document.getElementById('pause-modal');
     resumeBtn = document.getElementById('resume-btn');
+
+    // Weather & Scenery Controls
+    weatherBtnDay = document.getElementById('weather-btn-day');
+    weatherBtnNight = document.getElementById('weather-btn-night');
+    weatherBtnRain = document.getElementById('weather-btn-rain');
+    sunEl = document.getElementById('sun-item');
+    moonEl = document.getElementById('moon-item');
+    rainLayerEl = document.getElementById('rain-layer');
+    firefliesLayerEl = document.getElementById('fireflies-layer');
+    puddle1El = document.getElementById('puddle-1');
+    puddle2El = document.getElementById('puddle-2');
 
     // Initialize Canvas Particle System
     var canvasEl = document.getElementById('particles-canvas');
@@ -143,7 +166,7 @@ var App = (function() {
     var el = target.nodeType === 3 ? target.parentNode : target;
     if (!el) return false;
     if (typeof el.closest === 'function') {
-      return !!el.closest('button, .mode-btn, .theme-pill, .bubbles-back-btn, .bubbles-info-bar, .top-bar, .theme-nav-bar, .bottom-nature-bar, .flower-touchable, .sun-item, .cloud-item, #start-btn, .splash-overlay, .find-replay-btn, .pause-btn, .big-resume-btn, .pause-overlay, .feed-skip-btn, .alphabet-modal-overlay, .alphabet-modal-card, .handbook-card, .alphabet-toolbar');
+      return !!el.closest('button, .mode-btn, .theme-pill, .bubbles-back-btn, .bubbles-info-bar, .top-bar, .theme-nav-bar, .bottom-nature-bar, .flower-touchable, .sun-item, .cloud-item, .moon-item, .weather-btn, .weather-switch-group, .firefly, .puddle-item, #start-btn, .splash-overlay, .find-replay-btn, .pause-btn, .big-resume-btn, .pause-overlay, .feed-skip-btn, .alphabet-modal-overlay, .alphabet-modal-card, .handbook-card, .alphabet-toolbar');
     }
     while (el && el !== document.body && el !== document.documentElement) {
       var tag = (el.tagName || '').toLowerCase();
@@ -159,6 +182,11 @@ var App = (function() {
         cls.indexOf('flower-touchable') !== -1 ||
         cls.indexOf('sun-item') !== -1 ||
         cls.indexOf('cloud-item') !== -1 ||
+        cls.indexOf('moon-item') !== -1 ||
+        cls.indexOf('weather-btn') !== -1 ||
+        cls.indexOf('weather-switch') !== -1 ||
+        cls.indexOf('firefly') !== -1 ||
+        cls.indexOf('puddle-item') !== -1 ||
         cls.indexOf('pause-btn') !== -1 ||
         cls.indexOf('big-resume-btn') !== -1 ||
         cls.indexOf('pause-overlay') !== -1 ||
@@ -236,9 +264,42 @@ var App = (function() {
       });
     }
 
-    // Scenery: Sun, Clouds, Singing Flowers
-    var sunEl = document.getElementById('sun-item');
+    // Weather Switch Buttons (Day / Night / Rain)
+    if (weatherBtnDay) {
+      attachTouchOrClick(weatherBtnDay, function() {
+        if (isPaused) return;
+        setWeather('day');
+      });
+    }
+    if (weatherBtnNight) {
+      attachTouchOrClick(weatherBtnNight, function() {
+        if (isPaused) return;
+        setWeather('night');
+      });
+    }
+    if (weatherBtnRain) {
+      attachTouchOrClick(weatherBtnRain, function() {
+        if (isPaused) return;
+        setWeather('rain');
+      });
+    }
+
+    // Scenery: Sun, Moon, Fireflies, Puddles, Clouds, Singing Flowers
     if (sunEl) attachTouchOrClick(sunEl, triggerSun);
+    if (moonEl) attachTouchOrClick(moonEl, triggerMoon);
+
+    var fireflies = document.querySelectorAll('.firefly');
+    for (var fi = 0; fi < fireflies.length; fi++) {
+      (function(fly) {
+        attachTouchOrClick(fly, function(e) {
+          if (isPaused) return;
+          triggerFirefly(fly, e);
+        });
+      })(fireflies[fi]);
+    }
+
+    if (puddle1El) attachTouchOrClick(puddle1El, function(e) { triggerPuddle(puddle1El, e); });
+    if (puddle2El) attachTouchOrClick(puddle2El, function(e) { triggerPuddle(puddle2El, e); });
 
     var cloud1 = document.getElementById('cloud-1');
     var cloud2 = document.getElementById('cloud-2');
@@ -2457,6 +2518,138 @@ var App = (function() {
     }
   }
 
+  // ==========================================
+  // NATURE WEATHER SYSTEM (Day / Night / Rain)
+  // ==========================================
+  function setWeather(mode, silent) {
+    currentWeather = mode;
+
+    var container = document.getElementById('app-container');
+    if (container) {
+      container.classList.remove('weather-day', 'weather-night', 'weather-rain');
+      container.classList.add('weather-' + mode);
+    }
+
+    if (weatherBtnDay) weatherBtnDay.className = 'weather-btn' + (mode === 'day' ? ' active' : '');
+    if (weatherBtnNight) weatherBtnNight.className = 'weather-btn' + (mode === 'night' ? ' active' : '');
+    if (weatherBtnRain) weatherBtnRain.className = 'weather-btn' + (mode === 'rain' ? ' active' : '');
+
+    // Toggle scenery elements
+    if (sunEl) {
+      if (mode === 'day') sunEl.classList.remove('hidden');
+      else sunEl.classList.add('hidden');
+    }
+    if (moonEl) {
+      if (mode === 'night') moonEl.classList.remove('hidden');
+      else moonEl.classList.add('hidden');
+    }
+    if (firefliesLayerEl) {
+      if (mode === 'night') firefliesLayerEl.classList.remove('hidden');
+      else firefliesLayerEl.classList.add('hidden');
+    }
+    if (rainLayerEl) {
+      if (mode === 'rain') {
+        rainLayerEl.classList.remove('hidden');
+        renderRaindrops();
+      } else {
+        rainLayerEl.classList.add('hidden');
+        rainLayerEl.innerHTML = '';
+      }
+    }
+    if (puddle1El) {
+      if (mode === 'rain') puddle1El.classList.remove('hidden');
+      else puddle1El.classList.add('hidden');
+    }
+    if (puddle2El) {
+      if (mode === 'rain') puddle2El.classList.remove('hidden');
+      else puddle2El.classList.add('hidden');
+    }
+
+    if (silent) return;
+
+    if (mode === 'day') {
+      try {
+        AudioEngine.playClip('weather_day');
+        AudioEngine.playChime(783.99);
+      } catch (e) {}
+      showPrompt("It's a bright sunny day! ☀️", "☀️");
+    } else if (mode === 'night') {
+      try {
+        AudioEngine.playClip('weather_night');
+        AudioEngine.playLullabyMelody();
+      } catch (e) {}
+      showPrompt("Starry night! Shh, time to sleep. 🌙", "🌙");
+    } else if (mode === 'rain') {
+      try {
+        AudioEngine.playClip('weather_rain');
+        AudioEngine.playSplashSound();
+      } catch (e) {}
+      showPrompt("Pitter-patter rain! Let's splash! 🌧️", "🌧️");
+    }
+  }
+
+  function renderRaindrops() {
+    if (!rainLayerEl) return;
+    rainLayerEl.innerHTML = '';
+    var dropCount = 24;
+    for (var i = 0; i < dropCount; i++) {
+      var drop = document.createElement('div');
+      drop.className = 'raindrop';
+      var leftPct = Math.random() * 98;
+      var duration = 0.65 + Math.random() * 0.75;
+      var delay = Math.random() * 1.8;
+      var h = 18 + Math.random() * 18;
+      drop.style.left = leftPct + '%';
+      drop.style.animationDuration = duration + 's';
+      drop.style.animationDelay = delay + 's';
+      drop.style.height = h + 'px';
+      rainLayerEl.appendChild(drop);
+    }
+  }
+
+  function triggerMoon(e) {
+    if (isPaused) return;
+    if (moonEl) {
+      var rect = moonEl.getBoundingClientRect();
+      ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 20);
+    }
+    AudioEngine.playClip('weather_night');
+    AudioEngine.playLullabyMelody();
+    showPrompt("Good night, sweet dreams! 🌙", "⭐");
+    addStar(1);
+  }
+
+  function triggerFirefly(flyEl, e) {
+    if (isPaused) return;
+    if (flyEl) {
+      var rect = flyEl.getBoundingClientRect();
+      ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 12);
+    }
+    AudioEngine.playClip('sfx_firefly');
+    AudioEngine.playChime(880.00);
+    showPrompt("You caught a magical firefly! ✨", "✨");
+    addStar(1);
+  }
+
+  function triggerPuddle(puddleEl, e) {
+    if (isPaused) return;
+    if (puddleEl) {
+      var ripple = document.createElement('div');
+      ripple.className = 'puddle-ripple';
+      puddleEl.appendChild(ripple);
+      setTimeout(function() {
+        if (ripple.parentNode) ripple.parentNode.removeChild(ripple);
+      }, 650);
+
+      var rect = puddleEl.getBoundingClientRect();
+      ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 14);
+    }
+    AudioEngine.playClip('sfx_splash');
+    AudioEngine.playSplashSound();
+    showPrompt("Splash splash in the puddle! 💦", "🌧️");
+    addStar(1);
+  }
+
   function triggerSun(e) {
     if (isPaused) return;
     var sun = document.getElementById('sun-item');
@@ -2465,7 +2658,8 @@ var App = (function() {
       ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 16);
     }
     AudioEngine.playChime(783.99);
-    AudioEngine.playClip('sun');
+    AudioEngine.playClip('weather_day');
+    showPrompt("Hello warm sun! ☀️", "☀️");
     addStar(1);
   }
 
@@ -2523,6 +2717,7 @@ var App = (function() {
     startApp: startApp,
     setTheme: setTheme,
     setMode: setMode,
+    setWeather: setWeather,
     pauseApp: pauseApp,
     resumeApp: resumeApp
   };

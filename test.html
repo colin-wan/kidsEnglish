@@ -21,8 +21,8 @@
   <link rel="manifest" href="manifest.json">
   
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="style.css?v=3.9">
-  <link rel="stylesheet" href="style_v3.css?v=3.9">
+  <link rel="stylesheet" href="style.css?v=4.0">
+  <link rel="stylesheet" href="style_v3.css?v=4.0">
 </head>
 <body>
 
@@ -50,6 +50,29 @@
         </svg>
       </div>
 
+      <!-- Interactive Gentle Crescent Moon (Night Mode) -->
+      <div id="moon-item" class="moon-item hidden" title="Tap the gentle moon!">
+        <svg viewBox="0 0 100 100" class="moon-svg">
+          <path d="M 50 15 A 35 35 0 1 0 85 50 A 28 28 0 1 1 50 15 Z" fill="#FFE082" stroke="#FFD54F" stroke-width="2"/>
+          <!-- Cute Sleeping Eyes & Blush -->
+          <path d="M 38 48 Q 42 52 46 48" stroke="#5D4037" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M 52 45 Q 56 49 60 45" stroke="#5D4037" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <circle cx="35" cy="53" r="3.5" fill="#FF8A80" opacity="0.7"/>
+          <circle cx="63" cy="50" r="3.5" fill="#FF8A80" opacity="0.7"/>
+        </svg>
+      </div>
+
+      <!-- Interactive Raindrops Layer (Rain Mode) -->
+      <div id="rain-layer" class="rain-layer hidden"></div>
+
+      <!-- Interactive Glowing Fireflies Layer (Night Mode) -->
+      <div id="fireflies-layer" class="fireflies-layer hidden">
+        <div class="firefly" style="top:25%; left:20%; animation-delay:0s;" title="Catch the firefly!"></div>
+        <div class="firefly" style="top:45%; left:65%; animation-delay:1.2s;" title="Catch the firefly!"></div>
+        <div class="firefly" style="top:30%; left:80%; animation-delay:2.4s;" title="Catch the firefly!"></div>
+        <div class="firefly" style="top:55%; left:35%; animation-delay:0.8s;" title="Catch the firefly!"></div>
+      </div>
+
       <!-- Interactive Puffy Clouds -->
       <div id="cloud-1" class="cloud-item cloud-1" title="Tap the cloud!">
         <svg viewBox="0 0 120 70" width="100%" height="100%">
@@ -68,6 +91,9 @@
         <div class="hill-back"></div>
         <div class="hill-front"></div>
         <div class="pond"></div>
+        <!-- Splashy Rain Puddles (Rain Mode) -->
+        <div id="puddle-1" class="puddle-item puddle-1 hidden" title="Splash in the puddle!"></div>
+        <div id="puddle-2" class="puddle-item puddle-2 hidden" title="Splash in the puddle!"></div>
       </div>
     </div>
 
@@ -82,6 +108,13 @@
           <span class="star-icon">⭐</span>
           <span id="star-count" class="star-count">0</span>
         </div>
+      </div>
+
+      <!-- Nature Weather & Sky Switcher (Day / Night / Rain) -->
+      <div class="weather-switch-group" id="weather-switch-group" title="Nature Weather">
+        <button id="weather-btn-day" class="weather-btn active" title="Sunny Day" type="button">☀️</button>
+        <button id="weather-btn-night" class="weather-btn" title="Starry Night" type="button">🌙</button>
+        <button id="weather-btn-rain" class="weather-btn" title="Rainy Puddles" type="button">🌧️</button>
       </div>
 
       <!-- Friendly Mode Selection Tabs & Pause Button -->
@@ -319,10 +352,10 @@
   </div>
 
   <!-- JavaScript Modules (Loaded in order, ES5/ES6 iOS 12 safe) -->
-  <script src="js/audio.js?v=3.9"></script>
-  <script src="js/particles.js?v=3.9"></script>
-  <script src="js/content_data_v3.js?v=3.9"></script>
-  <script src="js/app_v3.js?v=3.9"></script>
+  <script src="js/audio.js?v=4.0"></script>
+  <script src="js/particles.js?v=4.0"></script>
+  <script src="js/content_data_v3.js?v=4.0"></script>
+  <script src="js/app_v3.js?v=4.0"></script>
 
 </body>
 </html>

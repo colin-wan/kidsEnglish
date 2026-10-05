@@ -95,12 +95,17 @@ var AudioEngine = (function() {
     song_macdonald: 'audio/song_macdonald.m4a',
     song_row: 'audio/song_row.m4a',
 
-    // Nature
+    // Nature & Weather
     sun: 'audio/sun.mp3',
     cloud: 'audio/cloud.mp3',
     flower: 'audio/flower.mp3',
     rainbow: 'audio/rainbow.mp3',
     butterfly: 'audio/butterfly.mp3',
+    weather_day: 'audio/weather_day.mp3',
+    weather_night: 'audio/weather_night.mp3',
+    weather_rain: 'audio/weather_rain.mp3',
+    sfx_splash: 'audio/sfx_splash.mp3',
+    sfx_firefly: 'audio/sfx_firefly.mp3',
 
     // Praise & Prompts
     praise_great: 'audio/praise_great.mp3',
@@ -1098,6 +1103,43 @@ var AudioEngine = (function() {
     } catch (e) {}
   }
 
+  // 💧 Water droplet splash sound
+  function playSplashSound() {
+    stopVoice();
+    playClip('sfx_splash');
+  }
+
+  // 🌙 Gentle Music Box Lullaby (Twinkle Twinkle style)
+  function playLullabyMelody() {
+    var ctx = getAudioContext();
+    if (!ctx) return;
+    var melody = [
+      { f: 523.25, d: 350 }, { f: 523.25, d: 350 },
+      { f: 783.99, d: 350 }, { f: 783.99, d: 350 },
+      { f: 880.00, d: 350 }, { f: 880.00, d: 350 },
+      { f: 783.99, d: 700 }
+    ];
+    var delay = 0;
+    for (var i = 0; i < melody.length; i++) {
+      (function(note, t) {
+        setTimeout(function() {
+          var now = ctx.currentTime;
+          var osc = ctx.createOscillator();
+          var gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(note.f, now);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + (note.d / 1000));
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + (note.d / 1000));
+        }, t);
+      })(melody[i], delay);
+      delay += melody[i].d + 60;
+    }
+  }
+
   return {
     unlock: unlock,
     playClip: playClip,
@@ -1108,6 +1150,8 @@ var AudioEngine = (function() {
     playBoing: playBoing,
     playSparkle: playSparkle,
     playFanfare: playFanfare,
+    playSplashSound: playSplashSound,
+    playLullabyMelody: playLullabyMelody,
     playAnimalSFX: playAnimalSFX,
     playAlphabetObjectSFX: playAlphabetObjectSFX,
     playStampSound: playStampSound,

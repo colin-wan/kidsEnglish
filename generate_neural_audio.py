@@ -223,7 +223,14 @@ CLIPS = {
     'sfx_letter_w': 'Munch, munch, slurp! Sweet juicy watermelon!',
     'sfx_letter_x': 'Ding-dong, ding-dong! Play the xylophone!',
     'sfx_letter_y': 'Whoosh, whoosh! Spin the yo-yo up and down!',
-    'sfx_letter_z': 'Clip-clop, clip-clop! Galloping zebra!'
+    'sfx_letter_z': 'Clip-clop, clip-clop! Galloping zebra!',
+
+    # 🌤️ Nature Weather & Day/Night Interactive Audio
+    'weather_day': 'Sunny morning! Good morning, sunshine!',
+    'weather_night': 'Starry night! Look at the gentle moon and twinkling stars. Sweet dreams!',
+    'weather_rain': 'Pitter-patter, pitter-patter! Rainy day fun! Jump in the puddle!',
+    'sfx_splash': 'Splish, splash, splosh! Water splash!',
+    'sfx_firefly': 'Twinkle, twinkle, glow little firefly!'
 };
 
 def download_google_tts(text, out_mp3):
