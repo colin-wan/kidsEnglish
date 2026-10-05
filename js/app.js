@@ -321,6 +321,87 @@ var App = (function() {
       });
     }
 
+    // Spotlight Tabs (Flashcard vs Trace)
+    var tabCardBtn = document.getElementById('spotlight-tab-card');
+    if (tabCardBtn) {
+      attachTouchOrClick(tabCardBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        setSpotlightTab('card');
+      });
+    }
+
+    var tabTraceBtn = document.getElementById('spotlight-tab-trace');
+    if (tabTraceBtn) {
+      attachTouchOrClick(tabTraceBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        setSpotlightTab('trace');
+      });
+    }
+
+    // Tracing Control Buttons
+    var traceClearBtn = document.getElementById('trace-btn-clear');
+    if (traceClearBtn) {
+      attachTouchOrClick(traceClearBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        clearTraceDrawing();
+      });
+    }
+
+    var traceSoundBtn = document.getElementById('trace-btn-sound');
+    if (traceSoundBtn) {
+      attachTouchOrClick(traceSoundBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        replayAlphabetSoundWithBurst();
+      });
+    }
+
+    var traceDoneBtn = document.getElementById('trace-btn-done');
+    if (traceDoneBtn) {
+      attachTouchOrClick(traceDoneBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        checkTraceCompletion();
+      });
+    }
+
+    // Tracing Canvas Touch & Mouse Events
+    var drawCanvas = document.getElementById('trace-draw-canvas');
+    if (drawCanvas) {
+      drawCanvas.addEventListener('touchstart', function(e) {
+        if (e.cancelable) e.preventDefault();
+        if (e.touches && e.touches[0]) {
+          var rect = drawCanvas.getBoundingClientRect();
+          handleTraceStart(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+        }
+      }, { passive: false });
+
+      drawCanvas.addEventListener('touchmove', function(e) {
+        if (e.cancelable) e.preventDefault();
+        if (e.touches && e.touches[0]) {
+          var rect = drawCanvas.getBoundingClientRect();
+          handleTraceMove(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+        }
+      }, { passive: false });
+
+      drawCanvas.addEventListener('touchend', function(e) {
+        if (e.cancelable) e.preventDefault();
+        handleTraceEnd();
+      }, { passive: false });
+
+      drawCanvas.addEventListener('mousedown', function(e) {
+        var rect = drawCanvas.getBoundingClientRect();
+        handleTraceStart(e.clientX - rect.left, e.clientY - rect.top);
+      });
+
+      drawCanvas.addEventListener('mousemove', function(e) {
+        var rect = drawCanvas.getBoundingClientRect();
+        handleTraceMove(e.clientX - rect.left, e.clientY - rect.top);
+      });
+
+      window.addEventListener('mouseup', function() {
+        if (isTracing) handleTraceEnd();
+      });
+    }
+
     var alphaModalEl = document.getElementById('alphabet-modal');
     if (alphaModalEl) {
       attachTouchOrClick(alphaModalEl, function(e) {
@@ -1224,6 +1305,241 @@ var App = (function() {
     collectBadge(item.letter);
   }
 
+  // 3.5 Finger Tracing Feature (Inside Spotlight Modal)
+  var currentSpotlightTab = 'card';
+  var isTracing = false;
+  var tracePoints = [];
+  var traceDrawnLength = 0;
+  var traceCompletedForLetter = false;
+  var traceLastSoundTime = 0;
+
+  function setSpotlightTab(tab) {
+    currentSpotlightTab = tab;
+    var tabCardBtn = document.getElementById('spotlight-tab-card');
+    var tabTraceBtn = document.getElementById('spotlight-tab-trace');
+    var cardView = document.getElementById('spotlight-card-view');
+    var traceView = document.getElementById('spotlight-trace-view');
+
+    if (tab === 'card') {
+      if (tabCardBtn) tabCardBtn.classList.add('active');
+      if (tabTraceBtn) tabTraceBtn.classList.remove('active');
+      if (cardView) cardView.classList.remove('hidden');
+      if (traceView) traceView.classList.add('hidden');
+    } else {
+      if (tabCardBtn) tabCardBtn.classList.remove('active');
+      if (tabTraceBtn) tabTraceBtn.classList.add('active');
+      if (cardView) cardView.classList.add('hidden');
+      if (traceView) traceView.classList.remove('hidden');
+      setTimeout(initTraceForCurrentLetter, 60);
+    }
+  }
+
+  function initTraceForCurrentLetter() {
+    var letters = ContentData.alphabet;
+    if (!letters || letters.length === 0) return;
+    var item = letters[currentAlphabetIndex];
+    if (!item) return;
+
+    tracePoints = [];
+    traceDrawnLength = 0;
+    traceCompletedForLetter = false;
+
+    var successBanner = document.getElementById('trace-success-banner');
+    if (successBanner) successBanner.classList.add('hidden');
+
+    var guideCanvas = document.getElementById('trace-guide-canvas');
+    var drawCanvas = document.getElementById('trace-draw-canvas');
+    if (!guideCanvas || !drawCanvas) return;
+
+    var container = document.getElementById('trace-canvas-container');
+    var w = container ? container.clientWidth : 320;
+    var h = container ? container.clientHeight : 220;
+    if (w < 100) w = 320;
+    if (h < 100) h = 220;
+
+    var dpr = window.devicePixelRatio || 1;
+    guideCanvas.width = w * dpr;
+    guideCanvas.height = h * dpr;
+    guideCanvas.style.width = w + 'px';
+    guideCanvas.style.height = h + 'px';
+
+    drawCanvas.width = w * dpr;
+    drawCanvas.height = h * dpr;
+    drawCanvas.style.width = w + 'px';
+    drawCanvas.style.height = h + 'px';
+
+    // Draw Guide Letter on bottom canvas
+    var gCtx = guideCanvas.getContext('2d');
+    gCtx.clearRect(0, 0, guideCanvas.width, guideCanvas.height);
+
+    var text = item.letter + ' ' + item.lower;
+    var fontSize = Math.floor(h * 0.58 * dpr);
+    gCtx.font = '900 ' + fontSize + 'px system-ui, -apple-system, sans-serif';
+    gCtx.textAlign = 'center';
+    gCtx.textBaseline = 'middle';
+
+    var cx = (w * dpr) / 2;
+    var cy = (h * dpr) / 2 + (4 * dpr);
+
+    // 1. Soft filled inner body
+    gCtx.fillStyle = '#FFF8E1';
+    gCtx.fillText(text, cx, cy);
+
+    // 2. Thick dotted guide outline
+    gCtx.lineWidth = 14 * dpr;
+    gCtx.setLineDash([12 * dpr, 10 * dpr]);
+    gCtx.strokeStyle = '#FFB300';
+    gCtx.strokeText(text, cx, cy);
+
+    // 3. Thin center stroke guide
+    gCtx.lineWidth = 3 * dpr;
+    gCtx.setLineDash([6 * dpr, 6 * dpr]);
+    gCtx.strokeStyle = '#E65100';
+    gCtx.strokeText(text, cx, cy);
+
+    // Subtle Watermark in top-right
+    gCtx.setLineDash([]);
+    gCtx.font = '700 ' + (15 * dpr) + 'px system-ui, -apple-system, sans-serif';
+    gCtx.fillStyle = '#78909C';
+    gCtx.textAlign = 'right';
+    gCtx.fillText(item.bubbleEmoji + ' ' + item.name, (w - 14) * dpr, 24 * dpr);
+
+    // Clear user draw canvas
+    var dCtx = drawCanvas.getContext('2d');
+    dCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+
+    try {
+      AudioEngine.playChime(659.25);
+    } catch (e) {}
+  }
+
+  function handleTraceStart(x, y) {
+    if (isPaused) return;
+    isTracing = true;
+    var drawCanvas = document.getElementById('trace-draw-canvas');
+    if (!drawCanvas) return;
+    var dpr = window.devicePixelRatio || 1;
+    var dCtx = drawCanvas.getContext('2d');
+
+    dCtx.beginPath();
+    dCtx.moveTo(x * dpr, y * dpr);
+
+    tracePoints.push({ x: x, y: y });
+    playTracingSparkle(x, y);
+  }
+
+  function handleTraceMove(x, y) {
+    if (!isTracing || isPaused) return;
+    var drawCanvas = document.getElementById('trace-draw-canvas');
+    if (!drawCanvas) return;
+    var dpr = window.devicePixelRatio || 1;
+    var dCtx = drawCanvas.getContext('2d');
+
+    var lastPt = tracePoints[tracePoints.length - 1];
+    var dx = x - (lastPt ? lastPt.x : x);
+    var dy = y - (lastPt ? lastPt.y : y);
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    traceDrawnLength += dist;
+
+    // Rainbow stroke cycling
+    var hue = (tracePoints.length * 7) % 360;
+    dCtx.lineWidth = 22 * dpr;
+    dCtx.lineCap = 'round';
+    dCtx.lineJoin = 'round';
+    dCtx.strokeStyle = 'hsl(' + hue + ', 95%, 52%)';
+
+    dCtx.lineTo(x * dpr, y * dpr);
+    dCtx.stroke();
+    dCtx.beginPath();
+    dCtx.moveTo(x * dpr, y * dpr);
+
+    tracePoints.push({ x: x, y: y });
+
+    if (tracePoints.length % 3 === 0) {
+      playTracingSparkle(x, y);
+    }
+
+    if (!traceCompletedForLetter && traceDrawnLength > 280 && tracePoints.length > 25) {
+      checkTraceCompletion();
+    }
+  }
+
+  function handleTraceEnd() {
+    isTracing = false;
+    if (!traceCompletedForLetter && traceDrawnLength > 200 && tracePoints.length > 20) {
+      checkTraceCompletion();
+    }
+  }
+
+  function playTracingSparkle(canvasX, canvasY) {
+    var drawCanvas = document.getElementById('trace-draw-canvas');
+    if (!drawCanvas) return;
+    var rect = drawCanvas.getBoundingClientRect();
+    var screenX = rect.left + canvasX;
+    var screenY = rect.top + canvasY;
+
+    ParticleSystem.burst(screenX, screenY, 3);
+
+    var now = Date.now();
+    if (now - traceLastSoundTime > 180) {
+      traceLastSoundTime = now;
+      var notes = [523.25, 587.33, 659.25, 783.99, 880.00];
+      var note = notes[Math.floor(Math.random() * notes.length)];
+      try {
+        AudioEngine.playChime(note);
+      } catch (e) {}
+    }
+  }
+
+  function checkTraceCompletion() {
+    if (traceCompletedForLetter) return;
+    traceCompletedForLetter = true;
+
+    var container = document.getElementById('trace-canvas-container');
+    var rect = container ? container.getBoundingClientRect() : { left: 150, top: 200, width: 200, height: 150 };
+    ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 35);
+
+    var letters = ContentData.alphabet;
+    var item = letters ? letters[currentAlphabetIndex] : null;
+    if (item) {
+      collectBadge(item.letter);
+    }
+    addStar(2);
+
+    var successBanner = document.getElementById('trace-success-banner');
+    if (successBanner) {
+      successBanner.classList.remove('hidden');
+    }
+
+    try {
+      AudioEngine.playSparkle();
+    } catch (e) {}
+
+    var praises = ['praise_great', 'praise_yay', 'praise_super', 'praise_highfive'];
+    var praiseClip = praises[Math.floor(Math.random() * praises.length)];
+    setTimeout(function() {
+      AudioEngine.stopVoice();
+      AudioEngine.playClip(praiseClip);
+    }, 400);
+  }
+
+  function clearTraceDrawing() {
+    tracePoints = [];
+    traceDrawnLength = 0;
+    traceCompletedForLetter = false;
+    var successBanner = document.getElementById('trace-success-banner');
+    if (successBanner) successBanner.classList.add('hidden');
+
+    var drawCanvas = document.getElementById('trace-draw-canvas');
+    if (drawCanvas) {
+      var dCtx = drawCanvas.getContext('2d');
+      dCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+    }
+    try {
+      AudioEngine.playPop();
+    } catch (e) {}
+  }
+
   // 4. Interactive ABC Song Sing-Along with Synchronized Bouncing Highlights
   var isSingingAbc = false;
   var abcSingTimers = [];
@@ -1646,8 +1962,12 @@ var App = (function() {
     }
 
     var item = letters[currentAlphabetIndex];
-    if (item && item.phraseKey) {
-      AudioEngine.playClip(item.phraseKey);
+    if (currentSpotlightTab === 'card') {
+      if (item && item.phraseKey) {
+        AudioEngine.playClip(item.phraseKey);
+      }
+    } else {
+      setTimeout(initTraceForCurrentLetter, 60);
     }
   }
 
@@ -1657,6 +1977,8 @@ var App = (function() {
       modal.classList.add('hidden');
       modal.setAttribute('aria-hidden', 'true');
     }
+    setSpotlightTab('card');
+    clearTraceDrawing();
     try {
       AudioEngine.stopVoice();
     } catch (e) {}
@@ -1724,6 +2046,10 @@ var App = (function() {
     var letterBox = document.getElementById('alphabet-spotlight-letter-box');
     if (letterBox) {
       letterBox.style.borderColor = item.color || '#FFA000';
+    }
+
+    if (currentSpotlightTab === 'trace') {
+      setTimeout(initTraceForCurrentLetter, 60);
     }
   }
 

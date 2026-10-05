@@ -21,8 +21,8 @@
   <link rel="manifest" href="manifest.json">
   
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="style.css?v=3.8">
-  <link rel="stylesheet" href="style_v3.css?v=3.8">
+  <link rel="stylesheet" href="style.css?v=3.9">
+  <link rel="stylesheet" href="style_v3.css?v=3.9">
 </head>
 <body>
 
@@ -196,8 +196,14 @@
         <button id="alphabet-modal-close" class="alphabet-modal-close-btn" title="Close">✕</button>
         <div class="alphabet-spotlight-header">
           <span class="alphabet-spotlight-step" id="alphabet-spotlight-step">Letter 1 of 26</span>
+          <div class="alphabet-spotlight-tabs">
+            <button id="spotlight-tab-card" class="spotlight-tab-btn active" type="button">🔤 Card</button>
+            <button id="spotlight-tab-trace" class="spotlight-tab-btn" type="button">✏️ Trace</button>
+          </div>
         </div>
-        <div class="alphabet-spotlight-body">
+
+        <!-- 1. Flashcard Mode View -->
+        <div class="alphabet-spotlight-body" id="spotlight-card-view">
           <div class="alphabet-spotlight-letter-box" id="alphabet-spotlight-letter-box">
             <span class="spotlight-letter-upper" id="spotlight-upper">A</span>
             <span class="spotlight-letter-lower" id="spotlight-lower">a</span>
@@ -213,6 +219,26 @@
               <span class="stamp-btn-icon" id="stamp-btn-icon">⭐</span>
               <span id="spotlight-stamp-text">Collect Badge</span>
             </button>
+          </div>
+        </div>
+
+        <!-- 2. Finger Tracing Mode View -->
+        <div class="alphabet-spotlight-body hidden" id="spotlight-trace-view">
+          <div class="trace-canvas-container" id="trace-canvas-container">
+            <canvas id="trace-guide-canvas" class="trace-canvas-layer"></canvas>
+            <canvas id="trace-draw-canvas" class="trace-canvas-layer"></canvas>
+            <div id="trace-start-hint" class="trace-start-hint">
+              <span class="start-dot">🟢</span>
+              <span class="start-text">Trace letter!</span>
+            </div>
+            <div id="trace-success-banner" class="trace-success-banner hidden">
+              🎉 Star Tracing! ⭐+2
+            </div>
+          </div>
+          <div class="trace-controls">
+            <button id="trace-btn-clear" class="trace-ctrl-btn" type="button">🔄 Clear</button>
+            <button id="trace-btn-sound" class="trace-ctrl-btn" type="button">🔊 Sound</button>
+            <button id="trace-btn-done" class="trace-ctrl-btn trace-done-btn" type="button">✨ Check</button>
           </div>
         </div>
         <div class="alphabet-spotlight-actions">
@@ -293,10 +319,10 @@
   </div>
 
   <!-- JavaScript Modules (Loaded in order, ES5/ES6 iOS 12 safe) -->
-  <script src="js/audio.js?v=3.8"></script>
-  <script src="js/particles.js?v=3.8"></script>
-  <script src="js/content_data_v3.js?v=3.8"></script>
-  <script src="js/app_v3.js?v=3.8"></script>
+  <script src="js/audio.js?v=3.9"></script>
+  <script src="js/particles.js?v=3.9"></script>
+  <script src="js/content_data_v3.js?v=3.9"></script>
+  <script src="js/app_v3.js?v=3.9"></script>
 
 </body>
 </html>
