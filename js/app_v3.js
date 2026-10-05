@@ -143,7 +143,7 @@ var App = (function() {
     var el = target.nodeType === 3 ? target.parentNode : target;
     if (!el) return false;
     if (typeof el.closest === 'function') {
-      return !!el.closest('button, .mode-btn, .theme-pill, .bubbles-back-btn, .bubbles-info-bar, .top-bar, .theme-nav-bar, .bottom-nature-bar, .flower-touchable, .sun-item, .cloud-item, #start-btn, .splash-overlay, .find-replay-btn, .pause-btn, .big-resume-btn, .pause-overlay, .feed-skip-btn');
+      return !!el.closest('button, .mode-btn, .theme-pill, .bubbles-back-btn, .bubbles-info-bar, .top-bar, .theme-nav-bar, .bottom-nature-bar, .flower-touchable, .sun-item, .cloud-item, #start-btn, .splash-overlay, .find-replay-btn, .pause-btn, .big-resume-btn, .pause-overlay, .feed-skip-btn, .alphabet-modal-overlay, .alphabet-modal-card');
     }
     while (el && el !== document.body && el !== document.documentElement) {
       var tag = (el.tagName || '').toLowerCase();
@@ -162,7 +162,11 @@ var App = (function() {
         cls.indexOf('pause-btn') !== -1 ||
         cls.indexOf('big-resume-btn') !== -1 ||
         cls.indexOf('pause-overlay') !== -1 ||
-        cls.indexOf('feed-skip-btn') !== -1
+        cls.indexOf('feed-skip-btn') !== -1 ||
+        cls.indexOf('alphabet-modal') !== -1 ||
+        cls.indexOf('alphabet-nav-btn') !== -1 ||
+        cls.indexOf('alphabet-sound-btn') !== -1 ||
+        cls.indexOf('alphabet-spotlight') !== -1
       )) return true;
       el = el.parentNode;
     }
@@ -257,6 +261,56 @@ var App = (function() {
       });
     }
 
+    // Alphabet Spotlight Modal Events
+    var alphaCloseBtn = document.getElementById('alphabet-modal-close');
+    if (alphaCloseBtn) {
+      attachTouchOrClick(alphaCloseBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        closeAlphabetModal();
+      });
+    }
+
+    var alphaPrevBtn = document.getElementById('alphabet-btn-prev');
+    if (alphaPrevBtn) {
+      attachTouchOrClick(alphaPrevBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        prevAlphabetLetter();
+      });
+    }
+
+    var alphaNextBtn = document.getElementById('alphabet-btn-next');
+    if (alphaNextBtn) {
+      attachTouchOrClick(alphaNextBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        nextAlphabetLetter();
+      });
+    }
+
+    var alphaSoundBtn = document.getElementById('alphabet-btn-sound');
+    if (alphaSoundBtn) {
+      attachTouchOrClick(alphaSoundBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        replayAlphabetSound();
+      });
+    }
+
+    var alphaLetterBox = document.getElementById('alphabet-spotlight-letter-box');
+    if (alphaLetterBox) {
+      attachTouchOrClick(alphaLetterBox, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        replayAlphabetSoundWithBurst();
+      });
+    }
+
+    var alphaModalEl = document.getElementById('alphabet-modal');
+    if (alphaModalEl) {
+      attachTouchOrClick(alphaModalEl, function(e) {
+        if (e && e.target === alphaModalEl) {
+          closeAlphabetModal();
+        }
+      });
+    }
+
     // ==========================================
     // BUBBLE POPPING (ZERO-LATENCY TOUCH & CLICK)
     // ==========================================
@@ -341,6 +395,7 @@ var App = (function() {
     clearFeedingTimers();
     clearFindTimers();
     clearSongPlayingStates();
+    closeAlphabetModal();
 
     // 1. Halt all audio sources immediately
     try {
@@ -450,6 +505,7 @@ var App = (function() {
     clearFeedingTimers();
     clearFindTimers();
     clearSongPlayingStates();
+    closeAlphabetModal();
 
     currentTheme = theme;
     targetItem = null;
@@ -487,6 +543,11 @@ var App = (function() {
       renderFindStage();
     } else {
       renderCurrentTheme();
+      if (theme === 'alphabet') {
+        try {
+          AudioEngine.playClip('theme_alphabet');
+        } catch (e) {}
+      }
     }
   }
 
@@ -506,6 +567,9 @@ var App = (function() {
     } else if (currentTheme === 'colors') {
       renderColorsGrid();
       showPrompt("Rainbow colors! Tap to splash! (10 Colors)", "🎨");
+    } else if (currentTheme === 'alphabet') {
+      renderAlphabetGrid();
+      showPrompt("Learn the ABC Alphabet! Tap any letter! (26 Letters)", "🔤");
     } else if (currentTheme === 'feed') {
       renderFeedingStage();
       showPrompt("Feed the hungry animal friends! (8 Animals)", "🍼");
@@ -850,11 +914,191 @@ var App = (function() {
     addStar(1);
   }
 
+  // ==========================================
+  // 🔤 ALPHABET A-Z LEARNING & SPOTLIGHT MODAL
+  // ==========================================
+  var currentAlphabetIndex = 0;
+
+  function renderAlphabetGrid() {
+    var letters = ContentData.alphabet;
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < letters.length; i++) {
+      var item = letters[i];
+      tapCounters[item.id] = 0;
+
+      var pod = document.createElement('div');
+      pod.className = 'animal-pod alphabet-pod';
+      pod.id = 'pod-' + item.id;
+      pod.setAttribute('data-id', item.id);
+
+      pod.innerHTML = (
+        '<div class="letter-badge alphabet-badge" style="background-color:' + (item.color || '#E65100') + '">' + item.letter + '</div>' +
+        '<div class="animal-svg-box">' + item.svg + '</div>' +
+        '<div class="animal-name-tag alphabet-name-tag"><span class="letter-display-pair">' + item.letter + item.lower + '</span> - ' + item.name + '</div>' +
+        '<div class="speech-bubble" id="speech-' + item.id + '" style="display:none;"></div>'
+      );
+
+      attachTouchOrClick(pod, (function(obj, idx) {
+        return function(e) {
+          if (isPaused) return;
+          handleAlphabetTap(obj, idx, e);
+        };
+      })(item, i));
+
+      frag.appendChild(pod);
+    }
+    playgroundEl.appendChild(frag);
+  }
+
+  function handleAlphabetTap(item, index, event) {
+    clearSongPlayingStates();
+    var pod = document.getElementById('pod-' + item.id);
+    if (pod) {
+      pod.classList.remove('anim-jump');
+      void pod.offsetWidth;
+      pod.classList.add('anim-jump');
+    }
+
+    var rect = pod ? pod.getBoundingClientRect() : { left: 100, top: 100, width: 80, height: 80 };
+    ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 16);
+
+    showSpeech(item.id, item.letter + item.lower + " - " + item.name + " " + item.bubbleEmoji);
+    addStar(1);
+
+    // Open the rich spotlight modal for this letter
+    openAlphabetModal(index);
+  }
+
+  function openAlphabetModal(index) {
+    if (isPaused) return;
+    var letters = ContentData.alphabet;
+    if (!letters || letters.length === 0) return;
+    updateAlphabetModal(index);
+
+    var modal = document.getElementById('alphabet-modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    var item = letters[currentAlphabetIndex];
+    if (item && item.phraseKey) {
+      AudioEngine.playClip(item.phraseKey);
+    }
+  }
+
+  function closeAlphabetModal() {
+    var modal = document.getElementById('alphabet-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+    try {
+      AudioEngine.stopVoice();
+    } catch (e) {}
+  }
+
+  function updateAlphabetModal(index) {
+    var letters = ContentData.alphabet;
+    if (!letters || letters.length === 0) return;
+
+    var total = letters.length;
+    var safeIdx = ((index % total) + total) % total;
+    currentAlphabetIndex = safeIdx;
+    var item = letters[safeIdx];
+
+    var stepEl = document.getElementById('alphabet-spotlight-step');
+    if (stepEl) {
+      stepEl.textContent = 'Letter ' + (safeIdx + 1) + ' of ' + total;
+    }
+
+    var upperEl = document.getElementById('spotlight-upper');
+    if (upperEl) {
+      upperEl.textContent = item.letter;
+      upperEl.style.color = item.color || '#E65100';
+    }
+
+    var lowerEl = document.getElementById('spotlight-lower');
+    if (lowerEl) {
+      lowerEl.textContent = item.lower;
+      lowerEl.style.color = item.color || '#FF8F00';
+    }
+
+    var emojiEl = document.getElementById('spotlight-emoji');
+    if (emojiEl) {
+      emojiEl.textContent = item.bubbleEmoji || '⭐';
+    }
+
+    var wordEl = document.getElementById('spotlight-word');
+    if (wordEl) {
+      wordEl.textContent = item.name;
+    }
+
+    var phonicsEl = document.getElementById('spotlight-phonics');
+    if (phonicsEl) {
+      phonicsEl.textContent = item.tagline || (item.letter + " says " + item.phonics + ", " + item.phonics + ", " + item.name + "!");
+    }
+
+    var letterBox = document.getElementById('alphabet-spotlight-letter-box');
+    if (letterBox) {
+      letterBox.style.borderColor = item.color || '#FFA000';
+    }
+  }
+
+  function nextAlphabetLetter() {
+    if (isPaused) return;
+    var letters = ContentData.alphabet;
+    if (!letters || letters.length === 0) return;
+    updateAlphabetModal(currentAlphabetIndex + 1);
+    var item = letters[currentAlphabetIndex];
+    if (item && item.phraseKey) {
+      AudioEngine.playClip(item.phraseKey);
+    }
+    try {
+      AudioEngine.playSparkle();
+    } catch (e) {}
+  }
+
+  function prevAlphabetLetter() {
+    if (isPaused) return;
+    var letters = ContentData.alphabet;
+    if (!letters || letters.length === 0) return;
+    updateAlphabetModal(currentAlphabetIndex - 1);
+    var item = letters[currentAlphabetIndex];
+    if (item && item.phraseKey) {
+      AudioEngine.playClip(item.phraseKey);
+    }
+    try {
+      AudioEngine.playSparkle();
+    } catch (e) {}
+  }
+
+  function replayAlphabetSound() {
+    if (isPaused) return;
+    var letters = ContentData.alphabet;
+    if (!letters || letters.length === 0) return;
+    var item = letters[currentAlphabetIndex];
+    if (item && item.phraseKey) {
+      AudioEngine.playClip(item.phraseKey);
+    }
+  }
+
+  function replayAlphabetSoundWithBurst() {
+    if (isPaused) return;
+    var letterBox = document.getElementById('alphabet-spotlight-letter-box');
+    if (letterBox) {
+      var rect = letterBox.getBoundingClientRect();
+      ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 16);
+    }
+    replayAlphabetSound();
+  }
+
   function getCurrentThemeItems() {
     if (currentTheme === 'animals') return ContentData.animals;
     if (currentTheme === 'fruits') return ContentData.fruits;
     if (currentTheme === 'vehicles') return ContentData.vehicles;
     if (currentTheme === 'colors') return ContentData.colors;
+    if (currentTheme === 'alphabet') return ContentData.alphabet;
     return ContentData.animals;
   }
 
@@ -902,9 +1146,10 @@ var App = (function() {
 
     var questionBox = document.createElement('div');
     questionBox.className = 'find-question-box';
+    var findTargetText = currentTheme === 'alphabet' ? ('Letter ' + targetItem.letter) : targetItem.name;
     questionBox.innerHTML = (
       '<div class="find-question-text">' +
-        '<span>Can you find the <strong>' + targetItem.name + '</strong>?</span>' +
+        '<span>Can you find the <strong>' + findTargetText + '</strong>?</span>' +
         '<span class="find-question-emoji">' + (targetItem.bubbleEmoji || '⭐') + '</span>' +
       '</div>' +
       '<button class="find-replay-btn" id="find-replay-btn">' +
@@ -930,6 +1175,12 @@ var App = (function() {
         card.innerHTML = (
           '<div class="color-splash-box" style="background-color:' + opt.hex + '">' + opt.bubbleEmoji + '</div>' +
           '<div class="animal-name-tag" style="color:' + opt.hex + '">' + opt.name + '</div>'
+        );
+      } else if (currentTheme === 'alphabet') {
+        card.innerHTML = (
+          '<div class="letter-badge alphabet-badge" style="background-color:' + (opt.color || '#E65100') + '">' + opt.letter + '</div>' +
+          '<div class="animal-svg-box">' + opt.svg + '</div>' +
+          '<div class="animal-name-tag alphabet-name-tag"><span class="letter-display-pair">' + opt.letter + opt.lower + '</span> - ' + opt.name + '</div>'
         );
       } else {
         card.innerHTML = (
@@ -969,7 +1220,8 @@ var App = (function() {
       });
     }
 
-    showPrompt("Can you find the " + targetItem.name + "?", targetItem.bubbleEmoji);
+    var findPromptText = currentTheme === 'alphabet' ? ("Can you find the letter " + targetItem.letter + "?") : ("Can you find the " + targetItem.name + "?");
+    showPrompt(findPromptText, targetItem.bubbleEmoji);
 
     clearFindTimers();
     findPromptTimer = setTimeout(function() {
@@ -1104,6 +1356,7 @@ var App = (function() {
     clearFeedingTimers();
     clearFindTimers();
     clearSongPlayingStates();
+    closeAlphabetModal();
 
     if (modeExploreBtn) modeExploreBtn.className = 'mode-btn' + (mode === 'explore' ? ' active' : '');
     if (modeFindBtn) modeFindBtn.className = 'mode-btn' + (mode === 'find' ? ' active' : '');

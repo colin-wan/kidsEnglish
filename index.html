@@ -21,7 +21,7 @@
   <link rel="manifest" href="manifest.json">
   
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=3.4">
+  <link rel="stylesheet" href="style.css?v=3.5">
 </head>
 <body>
 
@@ -110,6 +110,10 @@
         <span class="theme-pill-icon">🦁</span>
         <span>Animals (12)</span>
       </button>
+      <button class="theme-pill" data-theme="alphabet">
+        <span class="theme-pill-icon">🔤</span>
+        <span>ABC Alphabet (26)</span>
+      </button>
       <button class="theme-pill" data-theme="fruits">
         <span class="theme-pill-icon">🍎</span>
         <span>Yummy Food (12)</span>
@@ -188,6 +192,35 @@
     <!-- Canvas for Confetti, Stars & Floating Bubbles -->
     <canvas id="particles-canvas"></canvas>
 
+    <!-- 🔤 Alphabet Spotlight Modal (A-Z Large Interactive Flashcard) -->
+    <div id="alphabet-modal" class="alphabet-modal-overlay hidden" aria-hidden="true">
+      <div class="alphabet-modal-card" id="alphabet-modal-card">
+        <button id="alphabet-modal-close" class="alphabet-modal-close-btn" title="Close">✕</button>
+        <div class="alphabet-spotlight-header">
+          <span class="alphabet-spotlight-step" id="alphabet-spotlight-step">Letter 1 of 26</span>
+        </div>
+        <div class="alphabet-spotlight-body">
+          <div class="alphabet-spotlight-letter-box" id="alphabet-spotlight-letter-box">
+            <span class="spotlight-letter-upper" id="spotlight-upper">A</span>
+            <span class="spotlight-letter-lower" id="spotlight-lower">a</span>
+          </div>
+          <div class="alphabet-spotlight-word-box">
+            <span class="spotlight-word-emoji" id="spotlight-emoji">🍎</span>
+            <span class="spotlight-word-text" id="spotlight-word">Apple</span>
+          </div>
+          <p class="alphabet-spotlight-phonics" id="spotlight-phonics">A says ah, ah, Apple!</p>
+        </div>
+        <div class="alphabet-spotlight-actions">
+          <button id="alphabet-btn-prev" class="alphabet-nav-btn" title="Previous Letter">‹</button>
+          <button id="alphabet-btn-sound" class="alphabet-sound-btn" title="Listen Again">
+            <span class="sound-icon">🔊</span>
+            <span>Listen</span>
+          </button>
+          <button id="alphabet-btn-next" class="alphabet-nav-btn" title="Next Letter">›</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 🌙 Peaceful Night-Sky Pause Modal -->
     <div id="pause-modal" class="pause-overlay hidden">
       <div class="pause-card">
@@ -225,10 +258,10 @@
   </div>
 
   <!-- JavaScript Modules (Loaded in order, ES5/ES6 iOS 12 safe) -->
-  <script src="js/audio.js?v=3.4"></script>
-  <script src="js/particles.js?v=3.4"></script>
-  <script src="js/content_data.js?v=3.4"></script>
-  <script src="js/app.js?v=3.4"></script>
+  <script src="js/audio.js?v=3.5"></script>
+  <script src="js/particles.js?v=3.5"></script>
+  <script src="js/content_data.js?v=3.5"></script>
+  <script src="js/app.js?v=3.5"></script>
 
 </body>
 </html>
