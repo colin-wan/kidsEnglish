@@ -339,27 +339,44 @@ var AudioEngine = (function() {
     window.addEventListener('click', wakeAudio, { capture: true, passive: true });
   }
 
-  // Instantly silence all active speech, music, synthesized notes, and buffers
-  function stopAll() {
+  var currentVoiceCallback = null;
+
+  // Immediately terminate any active voice playback, reading, or song
+  function stopVoice() {
+    currentVoiceCallback = null;
+
+    // 1. Web Audio buffer source: clear callback first, then stop and disconnect
     if (currentBufferSource) {
       try {
+        currentBufferSource.onended = null;
         currentBufferSource.stop(0);
+        currentBufferSource.disconnect();
       } catch (e) {}
       currentBufferSource = null;
     }
+
+    // 2. Immediately pause and reset all HTMLAudio elements in the voice pool
     for (var i = 0; i < voicePool.length; i++) {
-      if (voicePool[i]) {
+      var tag = voicePool[i];
+      if (tag) {
         try {
-          voicePool[i].pause();
+          tag.onended = null;
+          tag.pause();
+          tag.currentTime = 0;
         } catch (e) {}
       }
     }
+
+    // 3. Immediately pause and reset song/music audio
     if (musicAudio) {
       try {
+        musicAudio.onended = null;
         musicAudio.pause();
+        musicAudio.currentTime = 0;
       } catch (e) {}
     }
 
+    // 4. Cancel any ongoing SpeechSynthesis
     if ('speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel();
@@ -367,14 +384,23 @@ var AudioEngine = (function() {
     }
   }
 
+  // Instantly silence all active speech, music, synthesized notes, and buffers
+  function stopAll() {
+    stopVoice();
+  }
+
   function pauseAll() {
-    stopAll();
+    stopVoice();
   }
 
   // Play pre-recorded American English audio or nursery rhyme
   function playClip(key, onEnded) {
     try {
       unlock();
+
+      // ALWAYS terminate any ongoing reading, voice, or song immediately!
+      stopVoice();
+
       var ctx = getAudioContext();
       if (ctx && ctx.state === 'suspended') {
         try { ctx.resume(); } catch (e) {}
@@ -384,8 +410,6 @@ var AudioEngine = (function() {
       var isSong = key && key.indexOf('song_') === 0;
 
       if (isSong) {
-        stopAll();
-
         var songUrl = audioFiles[key];
         if (!songUrl) {
           if (typeof onEnded === 'function') onEnded();
@@ -396,46 +420,37 @@ var AudioEngine = (function() {
           musicAudio = new Audio();
         }
 
+        currentVoiceCallback = onEnded;
+
         try {
           if (musicAudio.src && musicAudio.src.indexOf(songUrl) !== -1) {
             if (musicAudio.readyState >= 1) {
               musicAudio.currentTime = 0;
             }
           } else {
-            musicAudio.pause();
             musicAudio.src = songUrl;
           }
         } catch (e) {}
 
-        var songEndedHandler = function() {
-          try {
-            musicAudio.removeEventListener('ended', songEndedHandler);
-          } catch (e) {}
-          if (typeof onEnded === 'function') {
-            onEnded();
+        musicAudio.onended = function() {
+          var cb = currentVoiceCallback;
+          currentVoiceCallback = null;
+          if (typeof cb === 'function') {
+            cb();
           }
         };
-
-        try {
-          musicAudio.addEventListener('ended', songEndedHandler);
-        } catch (e) {}
 
         var playPromise = musicAudio.play();
         if (playPromise && playPromise.catch) {
           playPromise.catch(function(err) {
+            if (err && err.name === 'AbortError') return;
             console.warn('Music play failed:', err);
           });
         }
         return;
       }
 
-      // Stop previous active voice buffer
-      if (currentBufferSource) {
-        try {
-          currentBufferSource.stop(0);
-        } catch (e) {}
-        currentBufferSource = null;
-      }
+      currentVoiceCallback = onEnded;
 
       // 1. Instant zero-latency Web Audio playback if buffer is ready
       if (ctx && soundBuffers[key]) {
@@ -449,8 +464,10 @@ var AudioEngine = (function() {
             if (currentBufferSource === bSource) {
               currentBufferSource = null;
             }
-            if (typeof onEnded === 'function') {
-              onEnded();
+            var cb = currentVoiceCallback;
+            currentVoiceCallback = null;
+            if (typeof cb === 'function') {
+              cb();
             }
           };
 
@@ -461,7 +478,7 @@ var AudioEngine = (function() {
         }
       }
 
-      // 2. Play via alternating voiceAudio pool while fetching buffer for next time
+      // 2. Play via audio tag pool while fetching buffer for next time
       var voiceUrl = audioFiles[key];
       if (voiceUrl) {
         var audioTag = getNextVoiceAudio();
@@ -475,20 +492,18 @@ var AudioEngine = (function() {
               audioTag.src = voiceUrl;
             }
 
-            var voiceEndedHandler = function() {
-              try {
-                audioTag.removeEventListener('ended', voiceEndedHandler);
-              } catch (e) {}
-              if (typeof onEnded === 'function') {
-                onEnded();
+            audioTag.onended = function() {
+              var cb = currentVoiceCallback;
+              currentVoiceCallback = null;
+              if (typeof cb === 'function') {
+                cb();
               }
             };
-            audioTag.addEventListener('ended', voiceEndedHandler);
 
             var p = audioTag.play();
             if (p && p.catch) {
               p.catch(function(err) {
-                if (err && err.name === 'AbortError') return; // User tapped another card, do not clobber
+                if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) return; // User tapped another card, do not clobber
                 fallbackSpeech(key, onEnded);
               });
             }
@@ -522,6 +537,8 @@ var AudioEngine = (function() {
     try {
       window.speechSynthesis.cancel();
     } catch (e) {}
+
+    currentVoiceCallback = onEnded;
 
     var text = textOrKey;
     // Comprehensive text map for all content items
@@ -638,9 +655,13 @@ var AudioEngine = (function() {
         }
       }
 
-      if (typeof onEnded === 'function') {
-        utterance.onend = onEnded;
-      }
+      utterance.onend = function() {
+        var cb = currentVoiceCallback;
+        currentVoiceCallback = null;
+        if (typeof cb === 'function') {
+          cb();
+        }
+      };
 
       window.speechSynthesis.speak(utterance);
     } catch (e) {
@@ -884,6 +905,7 @@ var AudioEngine = (function() {
     playFanfare: playFanfare,
     playAnimalSFX: playAnimalSFX,
     speak: fallbackSpeech,
+    stopVoice: stopVoice,
     pauseAll: pauseAll,
     stopAll: stopAll
   };

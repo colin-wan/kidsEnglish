@@ -28,6 +28,7 @@ var App = (function() {
 
   // Find mini-game state
   var isFindTransitioning = false;
+  var findPromptTimer = null;
 
   // Bubbles mini-game state
   var bubblePopCount = 0;
@@ -338,6 +339,7 @@ var App = (function() {
     isPaused = true;
 
     clearFeedingTimers();
+    clearFindTimers();
     clearSongPlayingStates();
 
     // 1. Halt all audio sources immediately
@@ -419,6 +421,13 @@ var App = (function() {
     isFeeding = false;
   }
 
+  function clearFindTimers() {
+    if (findPromptTimer) {
+      clearTimeout(findPromptTimer);
+      findPromptTimer = null;
+    }
+  }
+
   function updateThemePills(theme) {
     var pills = document.querySelectorAll('.theme-pill');
     for (var i = 0; i < pills.length; i++) {
@@ -439,6 +448,7 @@ var App = (function() {
     } catch (e) {}
 
     clearFeedingTimers();
+    clearFindTimers();
     clearSongPlayingStates();
 
     currentTheme = theme;
@@ -690,6 +700,13 @@ var App = (function() {
 
   function handleFoodFeed(foodName, btn) {
     if (!currentFeedingAnimal || isFeeding || isPaused) return;
+
+    if (feedPromptTimer) {
+      clearTimeout(feedPromptTimer);
+      feedPromptTimer = null;
+    }
+    clearSongPlayingStates();
+
     var rect = btn.getBoundingClientRect();
     ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 16);
 
@@ -789,6 +806,7 @@ var App = (function() {
   // TAP & INTERACTION HANDLING
   // ==========================================
   function handleItemTap(item, event) {
+    clearSongPlayingStates();
     var pod = document.getElementById('pod-' + item.id);
     var rect = pod ? pod.getBoundingClientRect() : { left: 100, top: 100, width: 80, height: 80 };
     var cx = rect.left + rect.width / 2;
@@ -815,6 +833,7 @@ var App = (function() {
   }
 
   function handleColorTap(colorItem, event) {
+    clearSongPlayingStates();
     var pod = document.getElementById('pod-' + colorItem.id);
     if (pod) {
       pod.classList.remove('anim-jump');
@@ -952,7 +971,8 @@ var App = (function() {
 
     showPrompt("Can you find the " + targetItem.name + "?", targetItem.bubbleEmoji);
 
-    setTimeout(function() {
+    clearFindTimers();
+    findPromptTimer = setTimeout(function() {
       if (!isPaused) playTargetPrompt();
     }, 280);
   }
@@ -969,6 +989,9 @@ var App = (function() {
   function handleFindOptionTap(item, cardEl, e) {
     if (isFindTransitioning || !targetItem || isPaused) return;
 
+    clearFindTimers();
+    clearSongPlayingStates();
+
     var rect = cardEl.getBoundingClientRect();
     var cx = rect.left + rect.width / 2;
     var cy = rect.top + rect.height / 2;
@@ -983,9 +1006,9 @@ var App = (function() {
       var praises = ['praise_great', 'praise_yay', 'praise_super', 'praise_highfive'];
       var praiseClip = praises[Math.floor(Math.random() * praises.length)];
 
-      setTimeout(function() {
+      findPromptTimer = setTimeout(function() {
         AudioEngine.playClip(praiseClip, function() {
-          setTimeout(function() {
+          findPromptTimer = setTimeout(function() {
             isFindTransitioning = false;
             renderFindStage();
           }, 600);
@@ -1000,10 +1023,10 @@ var App = (function() {
 
       if (item.phraseKey) {
         AudioEngine.playClip(item.phraseKey, function() {
-          setTimeout(playTargetPrompt, 500);
+          findPromptTimer = setTimeout(playTargetPrompt, 500);
         });
       } else {
-        setTimeout(playTargetPrompt, 500);
+        findPromptTimer = setTimeout(playTargetPrompt, 500);
       }
     }
   }
@@ -1078,6 +1101,9 @@ var App = (function() {
     clearInterval(bubbleSpawnTimer);
     bubbleSpawnTimer = null;
     isFindTransitioning = false;
+    clearFeedingTimers();
+    clearFindTimers();
+    clearSongPlayingStates();
 
     if (modeExploreBtn) modeExploreBtn.className = 'mode-btn' + (mode === 'explore' ? ' active' : '');
     if (modeFindBtn) modeFindBtn.className = 'mode-btn' + (mode === 'find' ? ' active' : '');
@@ -1132,7 +1158,15 @@ var App = (function() {
     if (promptIconEl && icon) promptIconEl.innerText = icon;
   }
 
+  function hideAllSpeechBubbles() {
+    var bubbles = document.querySelectorAll('.speech-bubble');
+    for (var i = 0; i < bubbles.length; i++) {
+      bubbles[i].style.display = 'none';
+    }
+  }
+
   function showSpeech(id, text) {
+    hideAllSpeechBubbles();
     var bubble = document.getElementById('speech-' + id);
     if (!bubble) return;
     bubble.innerText = text;
