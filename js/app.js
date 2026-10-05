@@ -52,6 +52,11 @@ var App = (function() {
   var speedIconEl;
   var speedTextEl;
 
+  // Rhythm Concert Stage State
+  var modeConcertBtn;
+  var concertPerformers = []; // Performers currently on stage (up to 4)
+  var isConcertBeatPlaying = false;
+
   // DOM Elements
   var playgroundEl;
   var starCountEl;
@@ -77,6 +82,7 @@ var App = (function() {
     modeExploreBtn = document.getElementById('mode-explore');
     modeFindBtn = document.getElementById('mode-find');
     modeBubblesBtn = document.getElementById('mode-bubbles');
+    modeConcertBtn = document.getElementById('mode-concert');
     themeNavEl = document.getElementById('theme-nav');
     pauseBtn = document.getElementById('pause-btn');
     pauseModalEl = document.getElementById('pause-modal');
@@ -177,7 +183,7 @@ var App = (function() {
     var el = target.nodeType === 3 ? target.parentNode : target;
     if (!el) return false;
     if (typeof el.closest === 'function') {
-      return !!el.closest('button, .mode-btn, .theme-pill, .bubbles-back-btn, .bubbles-info-bar, .top-bar, .theme-nav-bar, .bottom-nature-bar, .flower-touchable, .sun-item, .cloud-item, .moon-item, .weather-btn, .weather-switch-group, .speed-toggle-btn, .firefly, .puddle-item, #start-btn, .splash-overlay, .find-replay-btn, .pause-btn, .big-resume-btn, .pause-overlay, .feed-skip-btn, .alphabet-modal-overlay, .alphabet-modal-card, .handbook-card, .alphabet-toolbar');
+      return !!el.closest('button, .mode-btn, .theme-pill, .bubbles-back-btn, .bubbles-info-bar, .top-bar, .theme-nav-bar, .bottom-nature-bar, .flower-touchable, .sun-item, .cloud-item, .moon-item, .weather-btn, .weather-switch-group, .speed-toggle-btn, .concert-ctrl-btn, .concert-shelf-card, .stage-performer-card, .stage-spot, .performer-remove-btn, .firefly, .puddle-item, #start-btn, .splash-overlay, .find-replay-btn, .pause-btn, .big-resume-btn, .pause-overlay, .feed-skip-btn, .alphabet-modal-overlay, .alphabet-modal-card, .handbook-card, .alphabet-toolbar');
     }
     while (el && el !== document.body && el !== document.documentElement) {
       var tag = (el.tagName || '').toLowerCase();
@@ -197,6 +203,9 @@ var App = (function() {
         cls.indexOf('weather-btn') !== -1 ||
         cls.indexOf('weather-switch') !== -1 ||
         cls.indexOf('speed-toggle') !== -1 ||
+        cls.indexOf('concert-') !== -1 ||
+        cls.indexOf('stage-') !== -1 ||
+        cls.indexOf('performer-') !== -1 ||
         cls.indexOf('firefly') !== -1 ||
         cls.indexOf('puddle-item') !== -1 ||
         cls.indexOf('pause-btn') !== -1 ||
@@ -273,6 +282,12 @@ var App = (function() {
       attachTouchOrClick(modeBubblesBtn, function() {
         if (isPaused) return;
         setMode('bubbles');
+      });
+    }
+    if (modeConcertBtn) {
+      attachTouchOrClick(modeConcertBtn, function() {
+        if (isPaused) return;
+        setMode('concert');
       });
     }
 
@@ -614,6 +629,7 @@ var App = (function() {
     closeAlphabetModal();
     closeHandbookModal();
     stopAbcSong();
+    stopConcertStage();
 
     // 1. Halt all audio sources immediately
     try {
@@ -665,6 +681,8 @@ var App = (function() {
       setTimeout(playTargetPrompt, 500);
     } else if (currentTheme === 'feed') {
       setTimeout(repeatPrompt, 500);
+    } else if (currentMode === 'concert') {
+      startConcertStageBeat();
     }
   }
 
@@ -2439,7 +2457,327 @@ var App = (function() {
   }
 
   // ==========================================
-  // MODE SWITCHING (Explore, Find, Bubbles)
+  // 🥁 RHYTHM CONCERT STAGE MODE (BABY BAND)
+  // ==========================================
+  function initDefaultConcertPerformers() {
+    if (concertPerformers && concertPerformers.length > 0) return;
+    var animals = ContentData.animals || [];
+    var p1 = null, p2 = null;
+    for (var i = 0; i < animals.length; i++) {
+      if (animals[i].id === 'lion') p1 = animals[i];
+      if (animals[i].id === 'elephant') p2 = animals[i];
+    }
+    if (!p1 && animals.length > 0) p1 = animals[0];
+    if (!p2 && animals.length > 1) p2 = animals[1];
+    concertPerformers = [];
+    if (p1) concertPerformers.push(p1);
+    if (p2) concertPerformers.push(p2);
+  }
+
+  function renderConcertStage() {
+    if (!playgroundEl) return;
+    playgroundEl.innerHTML = '';
+    initDefaultConcertPerformers();
+
+    var stageArea = document.createElement('div');
+    stageArea.className = 'concert-stage-area';
+
+    // Header bar
+    var headerBar = document.createElement('div');
+    headerBar.className = 'concert-header-bar';
+    headerBar.innerHTML = (
+      '<div class="concert-title-pill">' +
+        '<span style="font-size:22px; margin-right:6px;">🥁</span>' +
+        '<span>Rhythm Concert / 节奏音乐会</span>' +
+      '</div>' +
+      '<div class="concert-header-actions">' +
+        '<button id="concert-beat-btn" class="concert-ctrl-btn active" type="button">' +
+          '<span id="beat-btn-icon">🎶</span>' +
+          '<span id="beat-btn-text" style="margin-left:4px;">Beat: ON</span>' +
+        '</button>' +
+        '<button id="concert-clear-btn" class="concert-ctrl-btn" type="button">' +
+          '<span>🔄 Clear</span>' +
+        '</button>' +
+      '</div>'
+    );
+    stageArea.appendChild(headerBar);
+
+    // Stage Platform
+    var stageWrapper = document.createElement('div');
+    stageWrapper.className = 'concert-stage-wrapper';
+    stageWrapper.innerHTML = (
+      '<div class="concert-spotlight-beam"></div>' +
+      '<div class="concert-stage-performers" id="concert-performers-row"></div>' +
+      '<div class="concert-stage-deck">' +
+        '<div class="stage-footlight"></div>' +
+        '<div class="stage-footlight"></div>' +
+        '<div class="stage-footlight"></div>' +
+        '<div class="stage-footlight"></div>' +
+        '<div class="stage-footlight"></div>' +
+        '<div class="stage-footlight"></div>' +
+      '</div>'
+    );
+    stageArea.appendChild(stageWrapper);
+
+    // Bottom Shelf Roster
+    var shelf = document.createElement('div');
+    shelf.className = 'concert-shelf';
+    shelf.innerHTML = (
+      '<div class="concert-shelf-title">' +
+        '<span>🎶 Tap friends below to join the band (up to 4):</span>' +
+        '<span style="font-size:12px; color:#E65100; font-weight:800;">Tap card for SOLO! ⭐</span>' +
+      '</div>' +
+      '<div class="concert-shelf-items" id="concert-shelf-list"></div>'
+    );
+    stageArea.appendChild(shelf);
+
+    playgroundEl.appendChild(stageArea);
+
+    // Button Listeners
+    var beatBtn = document.getElementById('concert-beat-btn');
+    if (beatBtn) {
+      attachTouchOrClick(beatBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        toggleConcertBeat();
+      });
+    }
+    var clearBtn = document.getElementById('concert-clear-btn');
+    if (clearBtn) {
+      attachTouchOrClick(clearBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        clearConcertStage();
+      });
+    }
+
+    updateConcertStageSlots();
+    renderConcertShelf();
+
+    showPrompt("Welcome to the Rhythm Concert! Tap on stage for SOLO! 🥁", "🥁");
+
+    startConcertStageBeat();
+  }
+
+  function updateConcertStageSlots() {
+    var row = document.getElementById('concert-performers-row');
+    if (!row) return;
+    row.innerHTML = '';
+
+    for (var i = 0; i < 4; i++) {
+      var spot = document.createElement('div');
+      var item = concertPerformers[i];
+
+      if (item) {
+        spot.className = 'stage-spot';
+        var card = document.createElement('div');
+        card.className = 'stage-performer-card' + (isConcertBeatPlaying ? ' dancing' : '');
+        card.setAttribute('data-index', i);
+        card.innerHTML = (
+          '<button class="performer-remove-btn" title="Remove" type="button">✖</button>' +
+          '<div class="performer-emoji">' + (item.bubbleEmoji || item.emoji || '⭐') + '</div>' +
+          '<div class="performer-name">' + (item.name || item.letter || 'Friend') + '</div>' +
+          '<div class="performer-solo-badge">🌟 Tap for Solo!</div>'
+        );
+
+        // Click on card triggers Solo
+        (function(perfItem, cardEl) {
+          attachTouchOrClick(cardEl, function(e) {
+            if (e && e.target && e.target.classList.contains('performer-remove-btn')) return;
+            triggerConcertSolo(perfItem, cardEl);
+          });
+        })(item, card);
+
+        // Click on remove button
+        var removeBtn = card.querySelector('.performer-remove-btn');
+        if (removeBtn) {
+          (function(removeIdx) {
+            attachTouchOrClick(removeBtn, function(e) {
+              if (e && e.stopPropagation) e.stopPropagation();
+              concertPerformers.splice(removeIdx, 1);
+              AudioEngine.playBoing();
+              updateConcertStageSlots();
+              renderConcertShelf();
+            });
+          })(i);
+        }
+
+        spot.appendChild(card);
+      } else {
+        spot.className = 'stage-spot empty';
+        spot.innerHTML = (
+          '<div style="font-size:26px;">🎵</div>' +
+          '<div class="stage-empty-hint">+ Add Friend</div>'
+        );
+        attachTouchOrClick(spot, function() {
+          showPrompt("Tap any friend in the tray below to put them on stage! 🎶", "🎵");
+        });
+      }
+      row.appendChild(spot);
+    }
+  }
+
+  function renderConcertShelf() {
+    var listEl = document.getElementById('concert-shelf-list');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    // Gather candidate performers from animals & alphabet
+    var candidates = [];
+    var animals = ContentData.animals || [];
+    for (var a = 0; a < animals.length; a++) {
+      candidates.push(animals[a]);
+    }
+    var letters = ContentData.alphabet || [];
+    for (var l = 0; l < letters.length; l++) {
+      candidates.push(letters[l]);
+    }
+
+    for (var c = 0; c < candidates.length; c++) {
+      var item = candidates[c];
+      var isOnStage = isPerformerOnStage(item);
+
+      var shelfCard = document.createElement('div');
+      shelfCard.className = 'concert-shelf-card' + (isOnStage ? ' on-stage' : '');
+      shelfCard.innerHTML = (
+        '<div class="shelf-card-emoji">' + (item.bubbleEmoji || item.emoji || '⭐') + '</div>' +
+        '<div class="shelf-card-name">' + (item.name || item.letter || '') + '</div>'
+      );
+
+      (function(candidateItem, onStage) {
+        attachTouchOrClick(shelfCard, function() {
+          if (onStage) {
+            // Trigger solo for the on-stage card
+            var stageCards = document.querySelectorAll('.stage-performer-card');
+            for (var sc = 0; sc < stageCards.length; sc++) {
+              var idx = parseInt(stageCards[sc].getAttribute('data-index'), 10);
+              if (concertPerformers[idx] && (concertPerformers[idx].id === candidateItem.id || concertPerformers[idx].letter === candidateItem.letter)) {
+                triggerConcertSolo(candidateItem, stageCards[sc]);
+                break;
+              }
+            }
+          } else {
+            // Add to stage
+            if (concertPerformers.length >= 4) {
+              concertPerformers.shift(); // Remove first to make room
+            }
+            concertPerformers.push(candidateItem);
+            AudioEngine.playChime(783.99);
+            updateConcertStageSlots();
+            renderConcertShelf();
+            showPrompt((candidateItem.name || candidateItem.letter) + " joined the band! 🥁 Tap for solo!", "🎶");
+          }
+        });
+      })(item, isOnStage);
+
+      listEl.appendChild(shelfCard);
+    }
+  }
+
+  function isPerformerOnStage(item) {
+    if (!item) return false;
+    for (var i = 0; i < concertPerformers.length; i++) {
+      var p = concertPerformers[i];
+      if (p.id && item.id && p.id === item.id) return true;
+      if (p.letter && item.letter && p.letter === item.letter) return true;
+    }
+    return false;
+  }
+
+  function triggerConcertSolo(item, cardEl) {
+    if (isPaused) return;
+
+    if (cardEl) {
+      cardEl.classList.remove('solo-active');
+      void cardEl.offsetWidth;
+      cardEl.classList.add('solo-active');
+      setTimeout(function() {
+        cardEl.classList.remove('solo-active');
+      }, 600);
+
+      var rect = cardEl.getBoundingClientRect();
+      ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 20);
+
+      // Spawn floating music note
+      var notes = ['♪', '♫', '♬', '♩'];
+      var noteEl = document.createElement('div');
+      noteEl.className = 'music-note-float';
+      noteEl.innerText = notes[Math.floor(Math.random() * notes.length)];
+      noteEl.style.left = (rect.left + rect.width * 0.3 + Math.random() * 20) + 'px';
+      noteEl.style.top = (rect.top - 10) + 'px';
+      document.body.appendChild(noteEl);
+      setTimeout(function() {
+        if (noteEl.parentNode) noteEl.parentNode.removeChild(noteEl);
+      }, 1800);
+    }
+
+    addStar(1);
+
+    // Audio Playback
+    if (item.letter) {
+      AudioEngine.playAlphabetObjectSFX(item.id);
+    } else if (item.phraseKey) {
+      AudioEngine.playClip(item.phraseKey);
+      if (item.id) {
+        AudioEngine.playAnimalSFX(item.id);
+      }
+    } else if (item.id) {
+      AudioEngine.playAnimalSFX(item.id);
+    }
+
+    showPrompt("🌟 Solo by " + (item.name || item.letter) + "! Fantastic beat!", item.bubbleEmoji || item.emoji || "🎶");
+  }
+
+  function startConcertStageBeat() {
+    isConcertBeatPlaying = true;
+    var beatBtn = document.getElementById('concert-beat-btn');
+    if (beatBtn) {
+      beatBtn.className = 'concert-ctrl-btn active';
+      var textEl = document.getElementById('beat-btn-text');
+      if (textEl) textEl.innerText = 'Beat: ON';
+    }
+
+    AudioEngine.startConcertGroove(function(beatNum) {
+      var cards = document.querySelectorAll('.stage-performer-card');
+      for (var c = 0; c < cards.length; c++) {
+        cards[c].classList.add('dancing');
+      }
+    });
+  }
+
+  function stopConcertStage() {
+    isConcertBeatPlaying = false;
+    AudioEngine.stopConcertGroove();
+    var beatBtn = document.getElementById('concert-beat-btn');
+    if (beatBtn) {
+      beatBtn.className = 'concert-ctrl-btn';
+      var textEl = document.getElementById('beat-btn-text');
+      if (textEl) textEl.innerText = 'Beat: OFF';
+    }
+    var cards = document.querySelectorAll('.stage-performer-card');
+    for (var c = 0; c < cards.length; c++) {
+      cards[c].classList.remove('dancing');
+    }
+  }
+
+  function toggleConcertBeat() {
+    if (isConcertBeatPlaying) {
+      stopConcertStage();
+      showPrompt("Concert beat paused ⏸️", "🥁");
+    } else {
+      startConcertStageBeat();
+      showPrompt("Concert beat rocking! 🎶", "🥁");
+    }
+  }
+
+  function clearConcertStage() {
+    concertPerformers = [];
+    AudioEngine.playBoing();
+    updateConcertStageSlots();
+    renderConcertShelf();
+    showPrompt("Stage cleared! Pick your band members below! 🎶", "🥁");
+  }
+
+  // ==========================================
+  // MODE SWITCHING (Explore, Find, Bubbles, Concert)
   // ==========================================
   function setMode(mode) {
     currentMode = mode;
@@ -2453,10 +2791,12 @@ var App = (function() {
     closeHandbookModal();
     stopAbcSong();
     stopFindLetterMode();
+    stopConcertStage();
 
     if (modeExploreBtn) modeExploreBtn.className = 'mode-btn' + (mode === 'explore' ? ' active' : '');
     if (modeFindBtn) modeFindBtn.className = 'mode-btn' + (mode === 'find' ? ' active' : '');
     if (modeBubblesBtn) modeBubblesBtn.className = 'mode-btn' + (mode === 'bubbles' ? ' active' : '');
+    if (modeConcertBtn) modeConcertBtn.className = 'mode-btn' + (mode === 'concert' ? ' active' : '');
 
     try {
       if (mode === 'explore') {
@@ -2484,12 +2824,19 @@ var App = (function() {
           AudioEngine.playClip('mode_bubbles');
         } catch (e) {}
         renderBubblesStage();
+      } else if (mode === 'concert') {
+        ParticleSystem.clearBubbles();
+        try {
+          AudioEngine.playClip('mode_concert');
+        } catch (e) {}
+        renderConcertStage();
       }
     } catch (err) {
       console.error('Mode switch caught error:', err);
       if (mode === 'explore') renderCurrentTheme();
       else if (mode === 'find') renderFindStage();
       else if (mode === 'bubbles') renderBubblesStage();
+      else if (mode === 'concert') renderConcertStage();
     }
   }
 

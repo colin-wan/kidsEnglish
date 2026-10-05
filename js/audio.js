@@ -119,6 +119,8 @@ var AudioEngine = (function() {
     mode_explore: 'audio/mode_explore.mp3',
     mode_find: 'audio/mode_find.mp3',
     mode_bubbles: 'audio/mode_bubbles.mp3',
+    mode_concert: 'audio/mode_concert.mp3',
+    concert_solo: 'audio/concert_solo.mp3',
 
     // Expanded Animals
     panda_phrase: 'audio/panda_phrase.mp3',
@@ -518,10 +520,12 @@ var AudioEngine = (function() {
   // Instantly silence all active speech, music, synthesized notes, and buffers
   function stopAll() {
     stopVoice();
+    stopConcertGroove();
   }
 
   function pauseAll() {
     stopVoice();
+    stopConcertGroove();
   }
 
   // Play pre-recorded American English audio or nursery rhyme
@@ -1163,6 +1167,101 @@ var AudioEngine = (function() {
     }
   }
 
+  // ==========================================
+  // RHYTHM CONCERT DRUM BEAT GENERATOR (Web Audio)
+  // ==========================================
+  var concertBeatTimer = null;
+  var concertBeatStep = 0;
+
+  function playConcertDrum(type) {
+    var ctx = getAudioContext();
+    if (!ctx) return;
+    var t = ctx.currentTime;
+
+    if (type === 'kick') {
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.frequency.setValueAtTime(110, t);
+      osc.frequency.exponentialRampToValueAtTime(32, t + 0.12);
+      gain.gain.setValueAtTime(0.45, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.14);
+    } else if (type === 'snare') {
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(175, t);
+      gain.gain.setValueAtTime(0.24, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.09);
+    } else if (type === 'hihat') {
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(850, t);
+      gain.gain.setValueAtTime(0.05, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.035);
+    } else if (type === 'marimba') {
+      var notes = [261.63, 329.63, 392.00, 440.00, 523.25];
+      var f = notes[Math.floor(Math.random() * notes.length)];
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, t);
+      gain.gain.setValueAtTime(0.16, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.2);
+    }
+  }
+
+  function startConcertGroove(onBeatCallback) {
+    stopConcertGroove();
+    unlock();
+    var ctx = getAudioContext();
+    if (!ctx) return;
+    concertBeatStep = 0;
+
+    // 108 BPM -> 278ms per 8th note
+    var stepInterval = 278;
+    concertBeatTimer = setInterval(function() {
+      if (!audioCtx) return;
+      var step = concertBeatStep % 8;
+      if (step === 0 || step === 4) {
+        playConcertDrum('kick');
+        playConcertDrum('marimba');
+      } else if (step === 2 || step === 6) {
+        playConcertDrum('snare');
+      }
+      playConcertDrum('hihat');
+
+      if (typeof onBeatCallback === 'function' && (step % 2 === 0)) {
+        onBeatCallback(Math.floor(step / 2));
+      }
+      concertBeatStep++;
+    }, stepInterval);
+  }
+
+  function stopConcertGroove() {
+    if (concertBeatTimer) {
+      clearInterval(concertBeatTimer);
+      concertBeatTimer = null;
+    }
+    concertBeatStep = 0;
+  }
+
   return {
     unlock: unlock,
     playClip: playClip,
@@ -1178,6 +1277,9 @@ var AudioEngine = (function() {
     playAnimalSFX: playAnimalSFX,
     playAlphabetObjectSFX: playAlphabetObjectSFX,
     playStampSound: playStampSound,
+    startConcertGroove: startConcertGroove,
+    stopConcertGroove: stopConcertGroove,
+    playConcertDrum: playConcertDrum,
     speak: fallbackSpeech,
     setSpeechRate: setSpeechRate,
     getSpeechRate: getSpeechRate,

@@ -234,7 +234,11 @@ CLIPS = {
 
     # 🐢 Turtle Mode Speed Cues
     'turtle_mode_on': 'Turtle mode! Slow and clear!',
-    'turtle_mode_off': 'Normal speed! Fast and fun!'
+    'turtle_mode_off': 'Normal speed! Fast and fun!',
+
+    # 🥁 Concert Mode Cues
+    'mode_concert': 'Concert time! Let us make music together!',
+    'concert_solo': 'Solo time! Listen to my beat!'
 };
 
 def download_google_tts(text, out_mp3):
