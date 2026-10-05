@@ -230,7 +230,11 @@ CLIPS = {
     'weather_night': 'Starry night! Look at the gentle moon and twinkling stars. Sweet dreams!',
     'weather_rain': 'Pitter-patter, pitter-patter! Rainy day fun! Jump in the puddle!',
     'sfx_splash': 'Splish, splash, splosh! Water splash!',
-    'sfx_firefly': 'Twinkle, twinkle, glow little firefly!'
+    'sfx_firefly': 'Twinkle, twinkle, glow little firefly!',
+
+    # 🐢 Turtle Mode Speed Cues
+    'turtle_mode_on': 'Turtle mode! Slow and clear!',
+    'turtle_mode_off': 'Normal speed! Fast and fun!'
 };
 
 def download_google_tts(text, out_mp3):

@@ -46,6 +46,12 @@ var App = (function() {
   var puddle1El;
   var puddle2El;
 
+  // Turtle Slow Mode State (0.75x slow pronunciation for toddlers)
+  var isTurtleMode = false;
+  var speedToggleBtn;
+  var speedIconEl;
+  var speedTextEl;
+
   // DOM Elements
   var playgroundEl;
   var starCountEl;
@@ -75,6 +81,11 @@ var App = (function() {
     pauseBtn = document.getElementById('pause-btn');
     pauseModalEl = document.getElementById('pause-modal');
     resumeBtn = document.getElementById('resume-btn');
+
+    // Turtle Speed Toggle
+    speedToggleBtn = document.getElementById('speed-toggle-btn');
+    speedIconEl = document.getElementById('speed-icon');
+    speedTextEl = document.getElementById('speed-text');
 
     // Weather & Scenery Controls
     weatherBtnDay = document.getElementById('weather-btn-day');
@@ -166,7 +177,7 @@ var App = (function() {
     var el = target.nodeType === 3 ? target.parentNode : target;
     if (!el) return false;
     if (typeof el.closest === 'function') {
-      return !!el.closest('button, .mode-btn, .theme-pill, .bubbles-back-btn, .bubbles-info-bar, .top-bar, .theme-nav-bar, .bottom-nature-bar, .flower-touchable, .sun-item, .cloud-item, .moon-item, .weather-btn, .weather-switch-group, .firefly, .puddle-item, #start-btn, .splash-overlay, .find-replay-btn, .pause-btn, .big-resume-btn, .pause-overlay, .feed-skip-btn, .alphabet-modal-overlay, .alphabet-modal-card, .handbook-card, .alphabet-toolbar');
+      return !!el.closest('button, .mode-btn, .theme-pill, .bubbles-back-btn, .bubbles-info-bar, .top-bar, .theme-nav-bar, .bottom-nature-bar, .flower-touchable, .sun-item, .cloud-item, .moon-item, .weather-btn, .weather-switch-group, .speed-toggle-btn, .firefly, .puddle-item, #start-btn, .splash-overlay, .find-replay-btn, .pause-btn, .big-resume-btn, .pause-overlay, .feed-skip-btn, .alphabet-modal-overlay, .alphabet-modal-card, .handbook-card, .alphabet-toolbar');
     }
     while (el && el !== document.body && el !== document.documentElement) {
       var tag = (el.tagName || '').toLowerCase();
@@ -185,6 +196,7 @@ var App = (function() {
         cls.indexOf('moon-item') !== -1 ||
         cls.indexOf('weather-btn') !== -1 ||
         cls.indexOf('weather-switch') !== -1 ||
+        cls.indexOf('speed-toggle') !== -1 ||
         cls.indexOf('firefly') !== -1 ||
         cls.indexOf('puddle-item') !== -1 ||
         cls.indexOf('pause-btn') !== -1 ||
@@ -281,6 +293,14 @@ var App = (function() {
       attachTouchOrClick(weatherBtnRain, function() {
         if (isPaused) return;
         setWeather('rain');
+      });
+    }
+
+    // Turtle Slow Speech Switcher (0.75x Slow / 1.0x Normal)
+    if (speedToggleBtn) {
+      attachTouchOrClick(speedToggleBtn, function() {
+        if (isPaused) return;
+        toggleTurtleMode();
       });
     }
 
@@ -2650,6 +2670,44 @@ var App = (function() {
     addStar(1);
   }
 
+  // ==========================================
+  // TURTLE SLOW SPEECH MODE (0.75x Slow / 1.0x Normal)
+  // ==========================================
+  function toggleTurtleMode() {
+    isTurtleMode = !isTurtleMode;
+    var rate = isTurtleMode ? 0.75 : 1.0;
+    AudioEngine.setSpeechRate(rate);
+
+    if (speedToggleBtn) {
+      if (isTurtleMode) {
+        speedToggleBtn.classList.add('turtle-active');
+      } else {
+        speedToggleBtn.classList.remove('turtle-active');
+      }
+    }
+    if (speedIconEl) {
+      speedIconEl.innerText = isTurtleMode ? '🐢' : '🐰';
+    }
+    if (speedTextEl) {
+      speedTextEl.innerText = isTurtleMode ? '0.75x' : '1.0x';
+    }
+
+    if (speedToggleBtn) {
+      var rect = speedToggleBtn.getBoundingClientRect();
+      ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 14);
+    }
+
+    if (isTurtleMode) {
+      AudioEngine.playBoing();
+      AudioEngine.playClip('turtle_mode_on');
+      showPrompt("Turtle Mode 🐢: Slow & clear pronunciation!", "🐢");
+    } else {
+      AudioEngine.playChime(783.99);
+      AudioEngine.playClip('turtle_mode_off');
+      showPrompt("Normal Speed 🐰: Fast & lively!", "🐰");
+    }
+  }
+
   function triggerSun(e) {
     if (isPaused) return;
     var sun = document.getElementById('sun-item');
@@ -2718,6 +2776,7 @@ var App = (function() {
     setTheme: setTheme,
     setMode: setMode,
     setWeather: setWeather,
+    toggleTurtleMode: toggleTurtleMode,
     pauseApp: pauseApp,
     resumeApp: resumeApp
   };

@@ -106,6 +106,8 @@ var AudioEngine = (function() {
     weather_rain: 'audio/weather_rain.mp3',
     sfx_splash: 'audio/sfx_splash.mp3',
     sfx_firefly: 'audio/sfx_firefly.mp3',
+    turtle_mode_on: 'audio/turtle_mode_on.mp3',
+    turtle_mode_off: 'audio/turtle_mode_off.mp3',
 
     // Praise & Prompts
     praise_great: 'audio/praise_great.mp3',
@@ -272,6 +274,19 @@ var AudioEngine = (function() {
   var voicePool = [null, null];
   var voicePoolIdx = 0;
   var musicAudio = null;
+
+  // Speech Rate for Toddler Enlightenment (1.0x Normal, 0.75x Turtle Slow Mode)
+  var speechRate = 1.0;
+
+  function setSpeechRate(rate) {
+    if (typeof rate === 'number' && rate >= 0.4 && rate <= 2.0) {
+      speechRate = rate;
+    }
+  }
+
+  function getSpeechRate() {
+    return speechRate;
+  }
 
   // On-demand audio buffer loading with callback queueing and deduplication
   function getOrLoadBuffer(key, callback) {
@@ -568,8 +583,9 @@ var AudioEngine = (function() {
 
       currentVoiceCallback = onEnded;
 
-      // 1. Instant zero-latency Web Audio playback if buffer is ready
-      if (ctx && soundBuffers[key]) {
+      // 1. Instant zero-latency Web Audio playback if buffer is ready and normal speed (1.0x)
+      // When speechRate !== 1.0 (Turtle slow mode), route to HTMLAudio with preservesPitch for clear, warm human voice
+      if (ctx && soundBuffers[key] && speechRate === 1.0) {
         try {
           var bSource = ctx.createBufferSource();
           bSource.buffer = soundBuffers[key];
@@ -594,12 +610,19 @@ var AudioEngine = (function() {
         }
       }
 
-      // 2. Play via audio tag pool while fetching buffer for next time
+      // 2. Play via audio tag pool (supports pitch-preserved 0.75x speed playback on iPad & desktop)
       var voiceUrl = audioFiles[key];
       if (voiceUrl) {
         var audioTag = getNextVoiceAudio();
         if (audioTag) {
           try {
+            audioTag.playbackRate = speechRate;
+            if ('preservesPitch' in audioTag) {
+              audioTag.preservesPitch = true;
+            } else if ('webkitPreservesPitch' in audioTag) {
+              audioTag.webkitPreservesPitch = true;
+            }
+
             if (audioTag.src && audioTag.src.indexOf(voiceUrl) !== -1) {
               if (audioTag.readyState >= 1) {
                 audioTag.currentTime = 0;
@@ -815,7 +838,7 @@ var AudioEngine = (function() {
     try {
       var utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'en-US';
-      utterance.rate = 0.85; // Pleasant, articulated speed for 2-3 yo
+      utterance.rate = speechRate < 1.0 ? 0.65 : 0.85; // Accommodate turtle mode or pleasant speed
       utterance.pitch = 1.1; // Cheerful, friendly tone
 
       var voices = window.speechSynthesis.getVoices();
@@ -1156,6 +1179,8 @@ var AudioEngine = (function() {
     playAlphabetObjectSFX: playAlphabetObjectSFX,
     playStampSound: playStampSound,
     speak: fallbackSpeech,
+    setSpeechRate: setSpeechRate,
+    getSpeechRate: getSpeechRate,
     stopVoice: stopVoice,
     pauseAll: pauseAll,
     stopAll: stopAll
