@@ -1197,8 +1197,13 @@ var App = (function() {
     }
 
     var wordBox = document.getElementById('spotlight-word-box');
+    if (wordBox) {
+      wordBox.classList.remove('item-action-bounce');
+      void wordBox.offsetWidth;
+      wordBox.classList.add('item-action-bounce');
+    }
     var rect = wordBox ? wordBox.getBoundingClientRect() : { left: 150, top: 200, width: 80, height: 40 };
-    ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 14);
+    ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 16);
 
     AudioEngine.playAlphabetObjectSFX(item.id);
     addStar(1);

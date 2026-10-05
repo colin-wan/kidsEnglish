@@ -1933,6 +1933,12 @@ body.ios-standalone .playground-area {
   background: #FFF9C4;
 }
 
+.spotlight-word-emoji,
+.spotlight-word-text,
+.spotlight-action-pill {
+  pointer-events: none;
+}
+
 .spotlight-action-pill {
   display: inline-block;
   font-size: 11px;
@@ -1951,7 +1957,8 @@ body.ios-standalone .playground-area {
   50% { transform: scale(1.08); }
 }
 
-.spotlight-word-emoji.item-action-bounce {
+.spotlight-word-emoji.item-action-bounce,
+.alphabet-spotlight-word-box.item-action-bounce {
   animation: itemActionBounce 0.45s ease-out;
 }
 

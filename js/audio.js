@@ -215,7 +215,35 @@ var AudioEngine = (function() {
     find_letter_w: 'audio/find_letter_w.mp3',
     find_letter_x: 'audio/find_letter_x.mp3',
     find_letter_y: 'audio/find_letter_y.mp3',
-    find_letter_z: 'audio/find_letter_z.mp3'
+    find_letter_z: 'audio/find_letter_z.mp3',
+
+    // 🔤 26 Letter Exclusive Fun Sound Effects (Authentic American Voice Acting & Onomatopoeia)
+    sfx_letter_a: 'audio/sfx_letter_a.mp3',
+    sfx_letter_b: 'audio/sfx_letter_b.mp3',
+    sfx_letter_c: 'audio/sfx_letter_c.mp3',
+    sfx_letter_d: 'audio/sfx_letter_d.mp3',
+    sfx_letter_e: 'audio/sfx_letter_e.mp3',
+    sfx_letter_f: 'audio/sfx_letter_f.mp3',
+    sfx_letter_g: 'audio/sfx_letter_g.mp3',
+    sfx_letter_h: 'audio/sfx_letter_h.mp3',
+    sfx_letter_i: 'audio/sfx_letter_i.mp3',
+    sfx_letter_j: 'audio/sfx_letter_j.mp3',
+    sfx_letter_k: 'audio/sfx_letter_k.mp3',
+    sfx_letter_l: 'audio/sfx_letter_l.mp3',
+    sfx_letter_m: 'audio/sfx_letter_m.mp3',
+    sfx_letter_n: 'audio/sfx_letter_n.mp3',
+    sfx_letter_o: 'audio/sfx_letter_o.mp3',
+    sfx_letter_p: 'audio/sfx_letter_p.mp3',
+    sfx_letter_q: 'audio/sfx_letter_q.mp3',
+    sfx_letter_r: 'audio/sfx_letter_r.mp3',
+    sfx_letter_s: 'audio/sfx_letter_s.mp3',
+    sfx_letter_t: 'audio/sfx_letter_t.mp3',
+    sfx_letter_u: 'audio/sfx_letter_u.mp3',
+    sfx_letter_v: 'audio/sfx_letter_v.mp3',
+    sfx_letter_w: 'audio/sfx_letter_w.mp3',
+    sfx_letter_x: 'audio/sfx_letter_x.mp3',
+    sfx_letter_y: 'audio/sfx_letter_y.mp3',
+    sfx_letter_z: 'audio/sfx_letter_z.mp3'
   };
 
   function getAudioContext() {
@@ -322,7 +350,14 @@ var AudioEngine = (function() {
       'letter_phrase_m', 'letter_phrase_n', 'letter_phrase_o', 'letter_phrase_p',
       'letter_phrase_q', 'letter_phrase_r', 'letter_phrase_s', 'letter_phrase_t',
       'letter_phrase_u', 'letter_phrase_v', 'letter_phrase_w', 'letter_phrase_x',
-      'letter_phrase_y', 'letter_phrase_z'
+      'letter_phrase_y', 'letter_phrase_z',
+      'sfx_letter_a', 'sfx_letter_b', 'sfx_letter_c', 'sfx_letter_d',
+      'sfx_letter_e', 'sfx_letter_f', 'sfx_letter_g', 'sfx_letter_h',
+      'sfx_letter_i', 'sfx_letter_j', 'sfx_letter_k', 'sfx_letter_l',
+      'sfx_letter_m', 'sfx_letter_n', 'sfx_letter_o', 'sfx_letter_p',
+      'sfx_letter_q', 'sfx_letter_r', 'sfx_letter_s', 'sfx_letter_t',
+      'sfx_letter_u', 'sfx_letter_v', 'sfx_letter_w', 'sfx_letter_x',
+      'sfx_letter_y', 'sfx_letter_z'
     ]
   };
 
@@ -1017,220 +1052,18 @@ var AudioEngine = (function() {
     } catch (e) {}
   }
 
-  // 🔤 Interactive sound effects for 26 alphabet items
-  function playAlphabetObjectSFX(id) {
-    var ctx = getAudioContext();
-    if (!ctx) return;
-    var now = ctx.currentTime;
-    try {
-      if (id === 'letter_a' || id === 'letter_p' || id === 'letter_w') {
-        // Crisp crunchy bite (Apple, Panda bamboo, Watermelon)
-        for (var b = 0; b < 3; b++) {
-          (function(offset, idx) {
-            setTimeout(function() {
-              var osc = ctx.createOscillator();
-              var gain = ctx.createGain();
-              var t = ctx.currentTime;
-              osc.type = idx % 2 === 0 ? 'triangle' : 'square';
-              osc.frequency.setValueAtTime(idx === 0 ? 350 : (idx === 1 ? 280 : 220), t);
-              osc.frequency.exponentialRampToValueAtTime(110, t + 0.07);
-              gain.gain.setValueAtTime(0.28, t);
-              gain.gain.exponentialRampToValueAtTime(0.01, t + 0.07);
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-              osc.start(t);
-              osc.stop(t + 0.07);
-            }, offset);
-          })(b * 60, b);
-        }
-      } else if (id === 'letter_b') {
-        playAnimalSFX('bear');
-      } else if (id === 'letter_c') {
-        // Cute kitten meow
-        var oscC = ctx.createOscillator();
-        var gainC = ctx.createGain();
-        oscC.type = 'sine';
-        oscC.frequency.setValueAtTime(460, now);
-        oscC.frequency.linearRampToValueAtTime(720, now + 0.18);
-        oscC.frequency.linearRampToValueAtTime(520, now + 0.38);
-        gainC.gain.setValueAtTime(0.01, now);
-        gainC.gain.linearRampToValueAtTime(0.28, now + 0.08);
-        gainC.gain.exponentialRampToValueAtTime(0.01, now + 0.42);
-        oscC.connect(gainC);
-        gainC.connect(ctx.destination);
-        oscC.start(now);
-        oscC.stop(now + 0.42);
-      } else if (id === 'letter_d') {
-        playAnimalSFX('duck');
-      } else if (id === 'letter_e') {
-        playAnimalSFX('elephant');
-      } else if (id === 'letter_f') {
-        playAnimalSFX('frog');
-      } else if (id === 'letter_g' || id === 'letter_o') {
-        // Juicy fruit squish & pop
-        playPop();
-        setTimeout(function() { playChime(880.00); }, 90);
-      } else if (id === 'letter_h') {
-        // Bee buzz buzz
-        var oscH = ctx.createOscillator();
-        var gainH = ctx.createGain();
-        oscH.type = 'sawtooth';
-        oscH.frequency.setValueAtTime(220, now);
-        oscH.frequency.linearRampToValueAtTime(260, now + 0.15);
-        oscH.frequency.linearRampToValueAtTime(210, now + 0.35);
-        gainH.gain.setValueAtTime(0.2, now);
-        gainH.gain.exponentialRampToValueAtTime(0.01, now + 0.38);
-        oscH.connect(gainH);
-        gainH.connect(ctx.destination);
-        oscH.start(now);
-        oscH.stop(now + 0.38);
-      } else if (id === 'letter_i') {
-        // Frosty ice sparkle
-        var iceNotes = [1318.51, 1567.98, 2093.00];
-        for (var ic = 0; ic < iceNotes.length; ic++) {
-          (function(freq, delay) {
-            setTimeout(function() { playChime(freq); }, delay);
-          })(iceNotes[ic], ic * 90);
-        }
-      } else if (id === 'letter_j') {
-        // Bubbly jellyfish wobble
-        for (var jw = 0; jw < 3; jw++) {
-          (function(del) {
-            setTimeout(function() { playPop(); }, del);
-          })(jw * 110);
-        }
-      } else if (id === 'letter_k' || id === 'letter_r') {
-        // Playful spring boing (Kangaroo / Rabbit)
-        playBoing();
-      } else if (id === 'letter_l') {
-        playAnimalSFX('lion');
-      } else if (id === 'letter_m') {
-        playAnimalSFX('monkey');
-      } else if (id === 'letter_n') {
-        // Baby bird chirps
-        for (var nb = 0; nb < 2; nb++) {
-          (function(offset) {
-            setTimeout(function() {
-              var oscN = ctx.createOscillator();
-              var gainN = ctx.createGain();
-              var t = ctx.currentTime;
-              oscN.type = 'sine';
-              oscN.frequency.setValueAtTime(2200, t);
-              oscN.frequency.exponentialRampToValueAtTime(2800, t + 0.08);
-              gainN.gain.setValueAtTime(0.2, t);
-              gainN.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
-              oscN.connect(gainN);
-              gainN.connect(ctx.destination);
-              oscN.start(t);
-              oscN.stop(t + 0.08);
-            }, offset);
-          })(nb * 120);
-        }
-      } else if (id === 'letter_q') {
-        // Royal fanfare
-        var royalNotes = [523.25, 659.25, 783.99, 1046.50];
-        for (var rn = 0; rn < royalNotes.length; rn++) {
-          (function(freq, delay) {
-            setTimeout(function() { playChime(freq); }, delay);
-          })(royalNotes[rn], rn * 80);
-        }
-      } else if (id === 'letter_s') {
-        playSparkle();
-      } else if (id === 'letter_t') {
-        // Train steam whistle "Choo Choo!"
-        for (var tw = 0; tw < 2; tw++) {
-          (function(offset) {
-            setTimeout(function() {
-              var t = ctx.currentTime;
-              var oscT1 = ctx.createOscillator();
-              var oscT2 = ctx.createOscillator();
-              var gainT = ctx.createGain();
-              oscT1.type = 'triangle';
-              oscT2.type = 'sine';
-              oscT1.frequency.setValueAtTime(587.33, t); // D5
-              oscT2.frequency.setValueAtTime(880.00, t); // A5
-              gainT.gain.setValueAtTime(0.22, t);
-              gainT.gain.exponentialRampToValueAtTime(0.01, t + 0.16);
-              oscT1.connect(gainT);
-              oscT2.connect(gainT);
-              gainT.connect(ctx.destination);
-              oscT1.start(t);
-              oscT2.start(t);
-              oscT1.stop(t + 0.16);
-              oscT2.stop(t + 0.16);
-            }, offset);
-          })(tw * 180);
-        }
-      } else if (id === 'letter_u') {
-        // Raindrops patter
-        for (var ur = 0; ur < 4; ur++) {
-          (function(offset, idx) {
-            setTimeout(function() {
-              playChime(950 + idx * 80);
-            }, offset);
-          })(ur * 90, ur);
-        }
-      } else if (id === 'letter_v') {
-        // Van double car horn beep beep
-        for (var vh = 0; vh < 2; vh++) {
-          (function(offset) {
-            setTimeout(function() {
-              var t = ctx.currentTime;
-              var oscV1 = ctx.createOscillator();
-              var oscV2 = ctx.createOscillator();
-              var gainV = ctx.createGain();
-              oscV1.type = 'sawtooth';
-              oscV2.type = 'square';
-              oscV1.frequency.setValueAtTime(440, t);
-              oscV2.frequency.setValueAtTime(554.37, t);
-              gainV.gain.setValueAtTime(0.18, t);
-              gainV.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-              oscV1.connect(gainV);
-              oscV2.connect(gainV);
-              gainV.connect(ctx.destination);
-              oscV1.start(t);
-              oscV2.start(t);
-              oscV1.stop(t + 0.1);
-              oscV2.stop(t + 0.1);
-            }, offset);
-          })(vh * 130);
-        }
-      } else if (id === 'letter_x') {
-        // Xylophone glissando scale
-        var xyNotes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
-        for (var xi = 0; xi < xyNotes.length; xi++) {
-          (function(freq, delay) {
-            setTimeout(function() { playChime(freq); }, delay);
-          })(xyNotes[xi], xi * 60);
-        }
-      } else if (id === 'letter_y') {
-        // Yo-yo spin & bounce
-        playBoing();
-        setTimeout(function() { playChime(987.77); }, 150);
-      } else if (id === 'letter_z') {
-        // Zebra galloping rhythm
-        for (var zg = 0; zg < 3; zg++) {
-          (function(offset, idx) {
-            setTimeout(function() {
-              var oscZ = ctx.createOscillator();
-              var gainZ = ctx.createGain();
-              var t = ctx.currentTime;
-              oscZ.type = 'triangle';
-              oscZ.frequency.setValueAtTime(idx % 2 === 0 ? 180 : 130, t);
-              oscZ.frequency.exponentialRampToValueAtTime(70, t + 0.06);
-              gainZ.gain.setValueAtTime(0.25, t);
-              gainZ.gain.exponentialRampToValueAtTime(0.01, t + 0.06);
-              oscZ.connect(gainZ);
-              gainZ.connect(ctx.destination);
-              oscZ.start(t);
-              oscZ.stop(t + 0.06);
-            }, offset);
-          })(zg * 95, zg);
-        }
-      } else {
-        playPop();
-      }
-    } catch (e) {}
+  // 🔤 Interactive sound effects for 26 alphabet items (Studio-grade American audio)
+  function playAlphabetObjectSFX(id, onEnded) {
+    if (!id) return;
+    var letter = id.toLowerCase().replace('letter_', '').trim();
+    var sfxKey = 'sfx_letter_' + letter;
+    stopVoice();
+    if (audioFiles[sfxKey]) {
+      playClip(sfxKey, onEnded);
+    } else {
+      playPop();
+      if (typeof onEnded === 'function') onEnded();
+    }
   }
 
   // Satisfying wooden badge stamp sound

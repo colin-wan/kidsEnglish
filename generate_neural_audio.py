@@ -195,8 +195,36 @@ CLIPS = {
     'find_letter_w': 'Can you find the letter W?',
     'find_letter_x': 'Can you find the letter X?',
     'find_letter_y': 'Can you find the letter Y?',
-    'find_letter_z': 'Can you find the letter Z?'
-}
+    'find_letter_z': 'Can you find the letter Z?',
+
+    # 🔊 26 Letters Exclusive Sound Effects
+    'sfx_letter_a': 'Crunch, crunch, crunch! Yummy red apple!',
+    'sfx_letter_b': 'Grrr, grrr! Big friendly bear!',
+    'sfx_letter_c': 'Meow, meow, meow! Cute little cat!',
+    'sfx_letter_d': 'Quack, quack, quack! Happy ducky!',
+    'sfx_letter_e': 'Pawoo, pawoo! Big elephant trumpet!',
+    'sfx_letter_f': 'Ribbit, ribbit, ribbit! Green frog hops!',
+    'sfx_letter_g': 'Pop, pop! Juicy sweet grapes!',
+    'sfx_letter_h': 'Buzzzz, buzzzz! Sweet honey bee!',
+    'sfx_letter_i': 'Brrr, brrr! Frosty cold igloo!',
+    'sfx_letter_j': 'Bloop, bloop, bloop! Gentle jellyfish!',
+    'sfx_letter_k': 'Boing, boing, boing! Jumping kangaroo!',
+    'sfx_letter_l': 'Roar, roar, roar! Mighty lion!',
+    'sfx_letter_m': 'Ooh-ooh, aah-aah! Cheerful monkey!',
+    'sfx_letter_n': 'Tweet, tweet, chirp! Sweet birds in the nest!',
+    'sfx_letter_o': 'Squish, squish! Juicy fresh orange!',
+    'sfx_letter_p': 'Crunch, crunch! Panda eats green bamboo!',
+    'sfx_letter_q': 'Ta-daaa! Beautiful royal queen!',
+    'sfx_letter_r': 'Hop, hop, hop! Little white rabbit!',
+    'sfx_letter_s': 'Shine, shine! Warm bright sun!',
+    'sfx_letter_t': 'Choo-choo, choo-choo! Chugga chugga train!',
+    'sfx_letter_u': 'Pitter-patter, pitter-patter! Rain on the umbrella!',
+    'sfx_letter_v': 'Beep-beep, honk-honk! Fast little van!',
+    'sfx_letter_w': 'Munch, munch, slurp! Sweet juicy watermelon!',
+    'sfx_letter_x': 'Ding-dong, ding-dong! Play the xylophone!',
+    'sfx_letter_y': 'Whoosh, whoosh! Spin the yo-yo up and down!',
+    'sfx_letter_z': 'Clip-clop, clip-clop! Galloping zebra!'
+};
 
 def download_google_tts(text, out_mp3):
     encoded = urllib.parse.quote(text)
