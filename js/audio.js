@@ -357,7 +357,15 @@ var AudioEngine = (function() {
       'sfx_letter_m', 'sfx_letter_n', 'sfx_letter_o', 'sfx_letter_p',
       'sfx_letter_q', 'sfx_letter_r', 'sfx_letter_s', 'sfx_letter_t',
       'sfx_letter_u', 'sfx_letter_v', 'sfx_letter_w', 'sfx_letter_x',
-      'sfx_letter_y', 'sfx_letter_z'
+      'sfx_letter_y', 'sfx_letter_z',
+      'find_letter_a', 'find_letter_b', 'find_letter_c', 'find_letter_d',
+      'find_letter_e', 'find_letter_f', 'find_letter_g', 'find_letter_h',
+      'find_letter_i', 'find_letter_j', 'find_letter_k', 'find_letter_l',
+      'find_letter_m', 'find_letter_n', 'find_letter_o', 'find_letter_p',
+      'find_letter_q', 'find_letter_r', 'find_letter_s', 'find_letter_t',
+      'find_letter_u', 'find_letter_v', 'find_letter_w', 'find_letter_x',
+      'find_letter_y', 'find_letter_z',
+      'praise_great', 'praise_yay', 'praise_super', 'praise_highfive'
     ]
   };
 

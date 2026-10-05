@@ -564,6 +564,7 @@ var App = (function() {
     closeAlphabetModal();
     closeHandbookModal();
     stopAbcSong();
+    stopFindLetterMode();
 
     currentTheme = theme;
     targetItem = null;
@@ -1336,16 +1337,24 @@ var App = (function() {
     }, 26400));
   }
 
-  // 5. Grid Rendering with Toolbar & Pod Stamps
+  // 5. Grid Rendering with Toolbar, Zoom Buttons & Interactive Find Letter Game
+  var isFindLetterMode = false;
+  var currentFindLetter = null;
+  var findLetterTimer = null;
+
   function renderAlphabetGrid() {
     loadBadges();
     var letters = ContentData.alphabet;
     var frag = document.createDocumentFragment();
 
-    // Toolbar (Sing ABC Song & Badges Handbook)
+    // Toolbar (Find Letter Challenge, Sing ABC Song & Badges Handbook)
     var toolbar = document.createElement('div');
     toolbar.className = 'alphabet-toolbar';
     toolbar.innerHTML = (
+      '<button id="alphabet-find-btn" class="alphabet-tool-btn abc-find-btn' + (isFindLetterMode ? ' active-mode' : '') + '" type="button">' +
+        '<span class="tool-btn-icon">🔍</span>' +
+        '<span id="abc-find-btn-text">Find Letter</span>' +
+      '</button>' +
       '<button id="alphabet-sing-btn" class="alphabet-tool-btn abc-sing-btn" type="button">' +
         '<span class="tool-btn-icon">🎵</span>' +
         '<span id="abc-sing-btn-text">Sing ABC Song</span>' +
@@ -1356,6 +1365,24 @@ var App = (function() {
       '</button>'
     );
     frag.appendChild(toolbar);
+
+    // Interactive Find Letter Banner (Revealed when playing Find Letter challenge)
+    var banner = document.createElement('div');
+    banner.id = 'alphabet-find-banner';
+    banner.className = 'alphabet-find-banner' + (isFindLetterMode ? '' : ' hidden');
+    banner.innerHTML = (
+      '<div class="find-banner-content">' +
+        '<span class="find-banner-icon">🎯</span>' +
+        '<span id="find-banner-text">' +
+          (currentFindLetter ? ('Can you find: <strong class="find-target-char">' + currentFindLetter + '</strong>?') : 'Listen and tap the letter!') +
+        '</span>' +
+      '</div>' +
+      '<div class="find-banner-actions">' +
+        '<button id="find-repeat-sound-btn" class="find-repeat-btn" type="button" title="Listen Again">🔊 Listen</button>' +
+        '<button id="find-exit-btn" class="find-exit-btn" type="button" title="Exit">✕</button>' +
+      '</div>'
+    );
+    frag.appendChild(banner);
 
     for (var i = 0; i < letters.length; i++) {
       var item = letters[i];
@@ -1369,16 +1396,42 @@ var App = (function() {
 
       pod.innerHTML = (
         '<div class="letter-badge alphabet-badge" style="background-color:' + (item.color || '#E65100') + '">' + item.letter + '</div>' +
+        '<button class="alphabet-zoom-btn" title="View Flashcard" type="button">🔍</button>' +
         (hasBadge ? '<span class="pod-badge-stamp" title="Badge Collected!">⭐</span>' : '') +
         '<div class="animal-svg-box">' + item.svg + '</div>' +
         '<div class="animal-name-tag alphabet-name-tag"><span class="letter-display-pair">' + item.letter + item.lower + '</span> - ' + item.name + '</div>' +
         '<div class="speech-bubble" id="speech-' + item.id + '" style="display:none;"></div>'
       );
 
+      // 1. Tapping the zoom button opens the Spotlight Modal
+      var zoomBtn = pod.querySelector('.alphabet-zoom-btn');
+      if (zoomBtn) {
+        attachTouchOrClick(zoomBtn, (function(idx) {
+          return function(e) {
+            if (e && e.stopPropagation) e.stopPropagation();
+            if (isPaused) return;
+            openAlphabetModal(idx);
+          };
+        })(i));
+      }
+
+      // 2. Tapping the animal/item illustration directly plays the fun sound effect
+      var svgBox = pod.querySelector('.animal-svg-box');
+      if (svgBox) {
+        attachTouchOrClick(svgBox, (function(obj, idx) {
+          return function(e) {
+            if (e && e.stopPropagation) e.stopPropagation();
+            if (isPaused) return;
+            handleAlphabetDirectTap(obj, idx, e, true);
+          };
+        })(item, i));
+      }
+
+      // 3. Tapping the card body plays phonics introduction & alternates
       attachTouchOrClick(pod, (function(obj, idx) {
         return function(e) {
           if (isPaused) return;
-          handleAlphabetTap(obj, idx, e);
+          handleAlphabetDirectTap(obj, idx, e, false);
         };
       })(item, i));
 
@@ -1387,10 +1440,19 @@ var App = (function() {
     playgroundEl.appendChild(frag);
 
     // Bind toolbar buttons
+    var findBtn = document.getElementById('alphabet-find-btn');
+    if (findBtn) {
+      attachTouchOrClick(findBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        toggleFindLetterMode();
+      });
+    }
+
     var singBtn = document.getElementById('alphabet-sing-btn');
     if (singBtn) {
       attachTouchOrClick(singBtn, function(e) {
         if (e && e.stopPropagation) e.stopPropagation();
+        if (isFindLetterMode) stopFindLetterMode();
         startAbcSong();
       });
     }
@@ -1402,12 +1464,35 @@ var App = (function() {
         openHandbookModal();
       });
     }
+
+    var repeatBtn = document.getElementById('find-repeat-sound-btn');
+    if (repeatBtn) {
+      attachTouchOrClick(repeatBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        repeatFindLetterSound();
+      });
+    }
+
+    var exitBtn = document.getElementById('find-exit-btn');
+    if (exitBtn) {
+      attachTouchOrClick(exitBtn, function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        stopFindLetterMode();
+      });
+    }
   }
 
-  function handleAlphabetTap(item, index, event) {
+  function handleAlphabetDirectTap(item, index, event, tappedPictureOnly) {
     clearSongPlayingStates();
     stopAbcSong();
 
+    // If Find Letter challenge mode is active
+    if (isFindLetterMode) {
+      handleFindLetterGuess(item);
+      return;
+    }
+
+    // Normal direct play mode (Mode 1: card click directly speaks & makes sounds)
     var pod = document.getElementById('pod-' + item.id);
     if (pod) {
       pod.classList.remove('anim-jump');
@@ -1420,12 +1505,132 @@ var App = (function() {
 
     showSpeech(item.id, item.letter + item.lower + " - " + item.name + " " + item.bubbleEmoji);
     addStar(1);
-
-    // Auto collect badge when exploring this letter
     collectBadge(item.letter);
 
-    // Open the rich spotlight modal for this letter
-    openAlphabetModal(index);
+    tapCounters[item.id] = (tapCounters[item.id] || 0) + 1;
+
+    // Direct tapped illustration -> trigger exclusive realistic SFX immediately
+    if (tappedPictureOnly) {
+      AudioEngine.playAlphabetObjectSFX(item.id);
+    } else {
+      // Tapped card/badge -> alternate between letter phonics and fun SFX
+      if (tapCounters[item.id] % 2 === 1) {
+        AudioEngine.playClip(item.phraseKey);
+      } else {
+        AudioEngine.playAlphabetObjectSFX(item.id);
+      }
+    }
+  }
+
+  function toggleFindLetterMode() {
+    if (isFindLetterMode) {
+      stopFindLetterMode();
+    } else {
+      startFindLetterMode();
+    }
+  }
+
+  function startFindLetterMode() {
+    stopAbcSong();
+    isFindLetterMode = true;
+    var btn = document.getElementById('alphabet-find-btn');
+    if (btn) btn.classList.add('active-mode');
+
+    var banner = document.getElementById('alphabet-find-banner');
+    if (banner) banner.classList.remove('hidden');
+
+    pickNextFindLetter();
+  }
+
+  function stopFindLetterMode() {
+    isFindLetterMode = false;
+    currentFindLetter = null;
+    clearTimeout(findLetterTimer);
+    findLetterTimer = null;
+
+    var btn = document.getElementById('alphabet-find-btn');
+    if (btn) btn.classList.remove('active-mode');
+
+    var banner = document.getElementById('alphabet-find-banner');
+    if (banner) banner.classList.add('hidden');
+
+    try {
+      AudioEngine.stopVoice();
+    } catch (e) {}
+  }
+
+  function pickNextFindLetter() {
+    var letters = ContentData.alphabet;
+    if (!letters || letters.length === 0) return;
+
+    var candidates = letters.filter(function(l) {
+      return !currentFindLetter || l.letter.toUpperCase() !== currentFindLetter.toUpperCase();
+    });
+    var nextItem = candidates[Math.floor(Math.random() * candidates.length)] || letters[0];
+    currentFindLetter = nextItem.letter.toUpperCase();
+
+    var bannerText = document.getElementById('find-banner-text');
+    if (bannerText) {
+      bannerText.innerHTML = 'Can you find: <strong class="find-target-char">' + currentFindLetter + '</strong>?';
+    }
+
+    AudioEngine.stopVoice();
+    AudioEngine.playClip('find_letter_' + nextItem.lower);
+  }
+
+  function repeatFindLetterSound() {
+    if (!currentFindLetter) return;
+    AudioEngine.stopVoice();
+    AudioEngine.playClip('find_letter_' + currentFindLetter.toLowerCase());
+  }
+
+  function handleFindLetterGuess(item) {
+    if (!currentFindLetter) return;
+    var pod = document.getElementById('pod-' + item.id);
+    var isCorrect = (item.letter.toUpperCase() === currentFindLetter.toUpperCase());
+
+    if (isCorrect) {
+      if (pod) {
+        pod.classList.remove('anim-jump');
+        void pod.offsetWidth;
+        pod.classList.add('anim-jump');
+      }
+      var rect = pod ? pod.getBoundingClientRect() : { left: 150, top: 200, width: 80, height: 80 };
+      ParticleSystem.burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 24);
+
+      addStar(2);
+      collectBadge(item.letter);
+
+      var praises = ['praise_great', 'praise_yay', 'praise_super', 'praise_highfive'];
+      var praiseClip = praises[Math.floor(Math.random() * praises.length)];
+      AudioEngine.stopVoice();
+      AudioEngine.playClip(praiseClip);
+
+      var bannerText = document.getElementById('find-banner-text');
+      if (bannerText) {
+        bannerText.innerHTML = '🎉 WOW! Found letter <strong class="find-target-char">' + currentFindLetter + '</strong>! ⭐+2';
+      }
+
+      clearTimeout(findLetterTimer);
+      findLetterTimer = setTimeout(function() {
+        if (!isFindLetterMode) return;
+        pickNextFindLetter();
+      }, 1800);
+    } else {
+      if (pod) {
+        pod.classList.remove('anim-wobble');
+        void pod.offsetWidth;
+        pod.classList.add('anim-wobble');
+      }
+      try {
+        AudioEngine.playBoing();
+      } catch (e) {}
+
+      var bannerText = document.getElementById('find-banner-text');
+      if (bannerText) {
+        bannerText.innerHTML = '👉 That is ' + item.letter + '! Find: <strong class="find-target-char">' + currentFindLetter + '</strong>';
+      }
+    }
   }
 
   function openAlphabetModal(index) {
@@ -1840,6 +2045,7 @@ var App = (function() {
     closeAlphabetModal();
     closeHandbookModal();
     stopAbcSong();
+    stopFindLetterMode();
 
     if (modeExploreBtn) modeExploreBtn.className = 'mode-btn' + (mode === 'explore' ? ' active' : '');
     if (modeFindBtn) modeFindBtn.className = 'mode-btn' + (mode === 'find' ? ' active' : '');

@@ -1815,20 +1815,22 @@ body.ios-standalone .playground-area {
 .alphabet-toolbar {
   width: 95%;
   max-width: 680px;
-  margin: 0 auto 12px auto;
+  margin: 0 auto 10px auto;
   display: -webkit-flex;
   display: flex;
-  -webkit-justify-content: space-between;
-  justify-content: space-between;
+  -webkit-justify-content: center;
+  justify-content: center;
   -webkit-align-items: center;
   align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .alphabet-tool-btn {
   border: 3px solid #FFFFFF;
   border-radius: 24px;
-  padding: 8px 16px;
-  font-size: 14px;
+  padding: 8px 14px;
+  font-size: 13px;
   font-weight: 800;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -1867,6 +1869,173 @@ body.ios-standalone .playground-area {
 .abc-handbook-btn {
   background: linear-gradient(135deg, #FFD54F 0%, #FFA000 100%);
   color: #5D4037;
+}
+
+.abc-find-btn {
+  background: linear-gradient(135deg, #0288D1 0%, #03A9F4 100%);
+  color: #FFFFFF;
+}
+
+.abc-find-btn.active-mode {
+  background: linear-gradient(135deg, #7B1FA2 0%, #AB47BC 100%);
+  animation: findPulseBtn 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes findPulseBtn {
+  0% { transform: scale(1); box-shadow: 0 4px 12px rgba(123, 31, 162, 0.4); }
+  100% { transform: scale(1.05); box-shadow: 0 6px 18px rgba(123, 31, 162, 0.7); }
+}
+
+/* Find Letter Interactive Banner */
+.alphabet-find-banner {
+  width: 95%;
+  max-width: 680px;
+  margin: 0 auto 12px auto;
+  background: linear-gradient(135deg, #E1F5FE 0%, #FFF9C4 100%);
+  border: 3px solid #0288D1;
+  border-radius: 24px;
+  padding: 8px 16px;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  box-shadow: 0 6px 16px rgba(2, 136, 209, 0.25);
+  box-sizing: border-box;
+  animation: bannerSlideDown 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.alphabet-find-banner.hidden {
+  display: none !important;
+}
+
+@keyframes bannerSlideDown {
+  0% { transform: translateY(-12px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.find-banner-content {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 800;
+  color: #01579B;
+}
+
+.find-banner-icon {
+  font-size: 22px;
+  margin-right: 8px;
+}
+
+.find-target-char {
+  display: inline-block;
+  font-size: 22px;
+  font-weight: 900;
+  color: #E65100;
+  background: #FFF;
+  border: 2px solid #FFB300;
+  border-radius: 10px;
+  padding: 0 8px;
+  margin-left: 6px;
+  animation: findCharPop 0.8s infinite alternate;
+}
+
+@keyframes findCharPop {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.15); }
+}
+
+.find-banner-actions {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.find-repeat-btn {
+  background: #0288D1;
+  color: #FFF;
+  border: 2px solid #FFF;
+  border-radius: 18px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  touch-action: manipulation;
+}
+
+.find-repeat-btn:active {
+  transform: scale(0.92);
+}
+
+.find-exit-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #CFD8DC;
+  color: #37474F;
+  border: none;
+  font-size: 15px;
+  font-weight: 900;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.find-exit-btn:active {
+  background: #B0BEC5;
+  transform: scale(0.9);
+}
+
+/* Card Zoom Button */
+.alphabet-zoom-btn {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #FFF8E1;
+  border: 2px solid #FFA000;
+  color: #E65100;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  z-index: 5;
+  touch-action: manipulation;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.alphabet-zoom-btn:active {
+  transform: scale(0.85);
+  background: #FFE082;
+}
+
+/* Wobble animation for incorrect guess */
+.alphabet-pod.anim-wobble {
+  animation: podWobble 0.45s ease-in-out !important;
+}
+
+@keyframes podWobble {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px) rotate(-3deg); }
+  40%, 80% { transform: translateX(6px) rotate(3deg); }
 }
 
 /* Karaoke Sing-along letter highlighting */
