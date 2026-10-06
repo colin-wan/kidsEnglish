@@ -405,6 +405,9 @@ var AudioEngine = (function() {
     loadNext();
   }
 
+  // Silent audio data URI for priming iOS Safari media playback without sound
+  var SILENT_AUDIO_URI = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+
   // Lightweight 2-element voice pool for HTMLAudioElement fallback
   function initAudioTags() {
     try {
@@ -450,6 +453,26 @@ var AudioEngine = (function() {
     }
 
     initAudioTags();
+
+    // Prime HTMLAudio tags on iOS so subsequent programmatic .play() calls succeed
+    try {
+      if (voicePool[0]) {
+        voicePool[0].src = SILENT_AUDIO_URI;
+        var p0 = voicePool[0].play();
+        if (p0 && p0.catch) p0.catch(function() {});
+      }
+      if (voicePool[1]) {
+        voicePool[1].src = SILENT_AUDIO_URI;
+        var p1 = voicePool[1].play();
+        if (p1 && p1.catch) p1.catch(function() {});
+      }
+      if (musicAudio) {
+        musicAudio.src = SILENT_AUDIO_URI;
+        var pm = musicAudio.play();
+        if (pm && pm.catch) pm.catch(function() {});
+      }
+    } catch (ePrime) {}
+
     isUnlocked = true;
 
     // Preload welcome, yum, and essential sounds
@@ -495,7 +518,9 @@ var AudioEngine = (function() {
         try {
           tag.onended = null;
           tag.pause();
-          tag.currentTime = 0;
+          if (tag.readyState >= 1) {
+            tag.currentTime = 0;
+          }
         } catch (e) {}
       }
     }
@@ -505,7 +530,9 @@ var AudioEngine = (function() {
       try {
         musicAudio.onended = null;
         musicAudio.pause();
-        musicAudio.currentTime = 0;
+        if (musicAudio.readyState >= 1) {
+          musicAudio.currentTime = 0;
+        }
       } catch (e) {}
     }
 
@@ -646,7 +673,24 @@ var AudioEngine = (function() {
             var p = audioTag.play();
             if (p && p.catch) {
               p.catch(function(err) {
-                if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) return; // User tapped another card, do not clobber
+                if (err && err.name === 'AbortError') return; // User tapped another card, do not clobber
+                // If audio tag was blocked by iOS autoplay policy (NotAllowedError), attempt Web Audio buffer or speech fallback!
+                if (ctx && soundBuffers[key]) {
+                  try {
+                    var bSrc = ctx.createBufferSource();
+                    bSrc.buffer = soundBuffers[key];
+                    bSrc.connect(ctx.destination);
+                    currentBufferSource = bSrc;
+                    bSrc.onended = function() {
+                      if (currentBufferSource === bSrc) currentBufferSource = null;
+                      var cb = currentVoiceCallback;
+                      currentVoiceCallback = null;
+                      if (typeof cb === 'function') cb();
+                    };
+                    bSrc.start(0);
+                    return;
+                  } catch (eBuf) {}
+                }
                 fallbackSpeech(key, onEnded);
               });
             }

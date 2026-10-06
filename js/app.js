@@ -155,7 +155,6 @@ var App = (function() {
 
     element.addEventListener('touchend', function(e) {
       if (moved) return;
-      if (e.cancelable) e.preventDefault();
       if (e.stopPropagation) e.stopPropagation();
       var now = Date.now();
       if (now - lastTrigger < 300) return;
