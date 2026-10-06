@@ -2714,10 +2714,11 @@ var App = (function() {
     if (item.letter) {
       AudioEngine.playAlphabetObjectSFX(item.id);
     } else if (item.phraseKey) {
-      AudioEngine.playClip(item.phraseKey);
-      if (item.id) {
-        AudioEngine.playAnimalSFX(item.id);
-      }
+      AudioEngine.playClip(item.phraseKey, function() {
+        if (item.id) {
+          AudioEngine.playAnimalSFX(item.id);
+        }
+      });
     } else if (item.id) {
       AudioEngine.playAnimalSFX(item.id);
     }

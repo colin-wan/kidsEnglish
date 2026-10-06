@@ -1218,57 +1218,62 @@ var AudioEngine = (function() {
   var concertBeatStep = 0;
 
   function playConcertDrum(type) {
-    var ctx = getAudioContext();
-    if (!ctx) return;
-    var t = ctx.currentTime;
+    try {
+      var ctx = getAudioContext();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        try { ctx.resume(); } catch (e) {}
+      }
+      var t = ctx.currentTime;
 
-    if (type === 'kick') {
-      var osc = ctx.createOscillator();
-      var gain = ctx.createGain();
-      osc.frequency.setValueAtTime(110, t);
-      osc.frequency.exponentialRampToValueAtTime(32, t + 0.12);
-      gain.gain.setValueAtTime(0.45, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.14);
-    } else if (type === 'snare') {
-      var osc = ctx.createOscillator();
-      var gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(175, t);
-      gain.gain.setValueAtTime(0.24, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.09);
-    } else if (type === 'hihat') {
-      var osc = ctx.createOscillator();
-      var gain = ctx.createGain();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(850, t);
-      gain.gain.setValueAtTime(0.05, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.035);
-    } else if (type === 'marimba') {
-      var notes = [261.63, 329.63, 392.00, 440.00, 523.25];
-      var f = notes[Math.floor(Math.random() * notes.length)];
-      var osc = ctx.createOscillator();
-      var gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, t);
-      gain.gain.setValueAtTime(0.16, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.2);
-    }
+      if (type === 'kick') {
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.frequency.setValueAtTime(120, t);
+        osc.frequency.exponentialRampToValueAtTime(32, t + 0.12);
+        gain.gain.setValueAtTime(0.5, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.14);
+      } else if (type === 'snare') {
+        var oscS = ctx.createOscillator();
+        var gainS = ctx.createGain();
+        oscS.type = 'triangle';
+        oscS.frequency.setValueAtTime(180, t);
+        gainS.gain.setValueAtTime(0.28, t);
+        gainS.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+        oscS.connect(gainS);
+        gainS.connect(ctx.destination);
+        oscS.start(t);
+        oscS.stop(t + 0.09);
+      } else if (type === 'hihat') {
+        var oscH = ctx.createOscillator();
+        var gainH = ctx.createGain();
+        oscH.type = 'square';
+        oscH.frequency.setValueAtTime(850, t);
+        gainH.gain.setValueAtTime(0.06, t);
+        gainH.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+        oscH.connect(gainH);
+        gainH.connect(ctx.destination);
+        oscH.start(t);
+        oscH.stop(t + 0.035);
+      } else if (type === 'marimba') {
+        var notes = [261.63, 329.63, 392.00, 440.00, 523.25];
+        var f = notes[Math.floor(Math.random() * notes.length)];
+        var oscM = ctx.createOscillator();
+        var gainM = ctx.createGain();
+        oscM.type = 'sine';
+        oscM.frequency.setValueAtTime(f, t);
+        gainM.gain.setValueAtTime(0.2, t);
+        gainM.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        oscM.connect(gainM);
+        gainM.connect(ctx.destination);
+        oscM.start(t);
+        oscM.stop(t + 0.2);
+      }
+    } catch (eDrum) {}
   }
 
   function startConcertGroove(onBeatCallback) {
@@ -1276,12 +1281,19 @@ var AudioEngine = (function() {
     unlock();
     var ctx = getAudioContext();
     if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      try { ctx.resume(); } catch (e) {}
+    }
     concertBeatStep = 0;
 
     // 108 BPM -> 278ms per 8th note
     var stepInterval = 278;
     concertBeatTimer = setInterval(function() {
-      if (!audioCtx) return;
+      var c = getAudioContext();
+      if (!c) return;
+      if (c.state === 'suspended') {
+        try { c.resume(); } catch (e) {}
+      }
       var step = concertBeatStep % 8;
       if (step === 0 || step === 4) {
         playConcertDrum('kick');
